@@ -12,5 +12,5 @@ type Developer struct {
 }
 
 func (d *Developer) String() string {
-	return fmt.Sprintf("%s (%s): %d Commits\n", d.name, d.ident, len(d.commits))
+	return fmt.Sprintf("%s (%s)", d.name, d.ident)
 }

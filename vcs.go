@@ -5,7 +5,7 @@ package vcs
 
 func Load() {
 	repo := &Repository{
-		remote: "https://github.com/humhub/humhub.git",
+		remote: "https://github.com/jochil/dummy.git",
 		system: GIT,
 	}
 

@@ -75,7 +75,20 @@ func (c *GitConnector) Commits() map[string]*Commit {
 				c.devs[author.Email] = dev
 			}
 
-			commit := &Commit{dev: dev, message: obj.Message(), date: author.When}
+			commit := &Commit{id: obj.Id().String(), dev: dev, message: obj.Message(), date: author.When, files: map[string]*File{}}
+			log.Println(commit)
+
+			//iterate over files
+			tree, _ := obj.Tree()
+			tree.Walk(func(path string, entry *git.TreeEntry) int{
+				if entry.Type == git.ObjectBlob {
+					fileId := entry.Id.String()
+					commit.files[fileId] = &File{id: fileId, path: path + entry.Name}
+					log.Println("\t", path + entry.Name, entry.Id)
+				}
+				return 0
+			})
+
 			commits[obj.Id().String()] = commit
 			dev.commits[obj.Id().String()] = commit
 
