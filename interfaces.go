@@ -4,5 +4,6 @@ package vcs
 type Connector interface {
 	Load(remote string, local string)
 	Commits() map[string]*Commit
+	Developers() map[string]*Developer
 }
 

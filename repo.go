@@ -41,6 +41,10 @@ func (r *Repository) Commits() map[string]*Commit {
 	return r.connector.Commits()
 }
 
+func (r *Repository) Developers() map[string]*Developer {
+	return r.connector.Developers()
+}
+
 //TODO validate directories
 func (r *Repository) checkWorkspace() {
 	if r.local == "" {

@@ -11,4 +11,5 @@ func Load() {
 
 	repo.Init()
 	repo.Commits()
+	repo.Developers()
 }

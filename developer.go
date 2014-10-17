@@ -6,9 +6,11 @@ import (
 
 //Developer represents a single developer
 type Developer struct {
-	name string
+	ident	string
+	name 	string
+	commits map[string]*Commit
 }
 
 func (d *Developer) String() string {
-	return fmt.Sprintf("%s", d.name)
+	return fmt.Sprintf("%s (%s): %d Commits\n", d.name, d.ident, len(d.commits))
 }
