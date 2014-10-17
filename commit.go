@@ -14,14 +14,5 @@ type Commit struct {
 }
 
 func (c *Commit) String() string {
-	return fmt.Sprintf("%s: %q\n[%v]", c.dev, c.message, c.date)
-}
-
-//Developer represents a single developer
-type Developer struct {
-	name string
-}
-
-func (d *Developer) String() string {
-	return fmt.Sprintf("%s", d.name)
+	return fmt.Sprintf("%s: %q [%v]\n", c.dev, c.message, c.date)
 }

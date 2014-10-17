@@ -4,6 +4,11 @@ Package vcs
 package vcs
 
 func Load() {
-	//GitLoadCommits("https://github.com/jochil/pytemo")
-	GitLoadCommits("https://github.com/humhub/humhub.git")
+	repo := &Repository{
+		remote: "https://github.com/humhub/humhub.git",
+		system: GIT,
+	}
+
+	repo.Init()
+	repo.Commits()
 }
