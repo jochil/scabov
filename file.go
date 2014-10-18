@@ -1,6 +1,6 @@
 package vcs
 
 type File struct {
-	id   string
-	path string
+	Id   string
+	Path string
 }

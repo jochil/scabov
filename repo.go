@@ -15,10 +15,10 @@ const (
 
 //internal representation of an repository
 type Repository struct {
-	remote       string
-	local        string
-	system       int
-	connector    Connector
+	Remote       string
+	Local        string
+	System       int
+	Connector    Connector
 }
 
 /*
@@ -30,19 +30,19 @@ func (r *Repository) Init() {
 	r.checkWorkspace()
 
 	//get correct connector for given system
-	switch r.system {
+	switch r.System {
 	case GIT:
-		r.connector = &GitConnector{}
+		r.Connector = &GitConnector{}
 	}
-	r.connector.Load(r.remote, r.local)
+	r.Connector.Load(r.Remote, r.Local)
 }
 
 func (r *Repository) AllCommits() map[string]*Commit {
-	return r.connector.Commits()
+	return r.Connector.AllCommits()
 }
 
 func (r *Repository) AllDevelopers() map[string]*Developer {
-	return r.connector.Developers()
+	return r.Connector.AllDevelopers()
 }
 
 //Lookup for a single commit
@@ -61,8 +61,8 @@ func (r *Repository) FindCommit(id string) *Commit {
 func (r *Repository) FindFileInCommit(fileId string, commitId string) *File {
 	commit := r.FindCommit(commitId)
 	if commit != nil {
-		if file, ok := commit.files[fileId]; ok {
-			log.Printf("found file %s (%s) in commit %s", fileId, file.path, commitId)
+		if file, ok := commit.Files[fileId]; ok {
+			log.Printf("found file %s (%s) in commit %s", file.Id, file.Path, commitId)
 			return file
 		}
 	}
@@ -71,10 +71,10 @@ func (r *Repository) FindFileInCommit(fileId string, commitId string) *File {
 
 //TODO validate directories
 func (r *Repository) checkWorkspace() {
-	if r.local == "" {
+	if r.Local == "" {
 		//get hash from repo url
 		h := sha1.New()
-		io.WriteString(h, r.remote)
+		io.WriteString(h, r.Remote)
 		dir := fmt.Sprintf("%x", h.Sum(nil))
 
 		//get current directory
@@ -83,6 +83,6 @@ func (r *Repository) checkWorkspace() {
 			log.Fatal(cwd)
 		}
 		//TODO ensure file/dir handling
-		r.local = filepath.Join(cwd, "workspace", dir)
+		r.Local = filepath.Join(cwd, "workspace", dir)
 	}
 }

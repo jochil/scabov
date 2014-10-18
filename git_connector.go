@@ -8,50 +8,50 @@ import (
 
 //internal struct for this connecotr
 type GitConnector struct {
-	repo *git.Repository
-	commits map[string]*Commit
-	devs map[string]*Developer
+	Repo *git.Repository
+	Commits map[string]*Commit
+	Devs map[string]*Developer
 }
 
 //loads an existing repository or clone it from remote
 func (c *GitConnector) Load(remote string, local string) {
 
 	//TODO init values, should be done in constructor
-	c.devs = map[string]*Developer{}
+	c.Devs = map[string]*Developer{}
 
 	repo, err := git.OpenRepository(local)
 	if err != nil {
 		os.RemoveAll(local)
-		c.repo = c.cloneGitRepo(remote, local)
+		c.Repo = c.cloneGitRepo(remote, local)
 	} else {
 		log.Printf("opened git repo in %s", repo.Path())
-		c.repo = repo
+		c.Repo = repo
 	}
 }
 
-func (c GitConnector) Developers() map[string]*Developer {
+func (c GitConnector) AllDevelopers() map[string]*Developer {
 	//TODO replace this with a more efficient way
-	if c.commits == nil {
-		c.Commits()
+	if c.Commits == nil {
+		c.AllCommits()
 	}
 
-	log.Printf("found %d developers in git repo", len(c.devs))
-	return c.devs
+	log.Printf("found %d developers in git repo", len(c.Devs))
+	return c.Devs
 }
 
 //return all commits
-func (c *GitConnector) Commits() map[string]*Commit {
+func (c *GitConnector) AllCommits() map[string]*Commit {
 
-	if c.repo == nil {
+	if c.Repo == nil {
 		log.Fatal("no git repository loaded")
 	}
 
-	if c.commits != nil {
-		return c.commits
+	if c.Commits != nil {
+		return c.Commits
 	}
 
 	//get object database
-	odb, err := c.repo.Odb()
+	odb, err := c.Repo.Odb()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -59,7 +59,7 @@ func (c *GitConnector) Commits() map[string]*Commit {
 	//iterate over objects and convert them to Commit type
 	commits := map[string]*Commit{}
 	err = odb.ForEach(func(oid *git.Oid) error {
-		obj, err := c.repo.Lookup(oid)
+		obj, err := c.Repo.Lookup(oid)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -69,13 +69,13 @@ func (c *GitConnector) Commits() map[string]*Commit {
 		case *git.Commit:
 			author := obj.Author()
 
-			dev, exists := c.devs[author.Email]
+			dev, exists := c.Devs[author.Email]
 			if !exists {
-				dev = &Developer{ id: author.Email, email: author.Email, name: author.Name, commits: map[string]*Commit{}}
-				c.devs[author.Email] = dev
+				dev = &Developer{ Id: author.Email, Email: author.Email, Name: author.Name, Commits: map[string]*Commit{}}
+				c.Devs[author.Email] = dev
 			}
 
-			commit := &Commit{id: obj.Id().String(), dev: dev, message: obj.Message(), date: author.When, files: map[string]*File{}}
+			commit := &Commit{Id: obj.Id().String(), Developer: dev, Message: obj.Message(), Date: author.When, Files: map[string]*File{}}
 			log.Println(commit)
 
 			//iterate over files
@@ -83,20 +83,20 @@ func (c *GitConnector) Commits() map[string]*Commit {
 			tree.Walk(func(path string, entry *git.TreeEntry) int{
 				if entry.Type == git.ObjectBlob {
 					fileId := entry.Id.String()
-					commit.files[fileId] = &File{id: fileId, path: path + entry.Name}
+					commit.Files[fileId] = &File{Id: fileId, Path: path + entry.Name}
 					log.Println("\t", path + entry.Name, entry.Id)
 				}
 				return 0
 			})
 
 			commits[obj.Id().String()] = commit
-			dev.commits[obj.Id().String()] = commit
+			dev.Commits[obj.Id().String()] = commit
 
 		}
 		return nil
 	})
 	log.Printf("loaded %d commits from git repo", len(commits))
-	c.commits = commits //cache commits
+	c.Commits = commits //cache commits
 	return commits
 }
 

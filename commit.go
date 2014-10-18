@@ -7,13 +7,13 @@ import (
 
 //Commit represents a single commit
 type Commit struct {
-	id       string
-	date     time.Time
-	message  string
-	dev      *Developer
-	files    map[string]*File
+	Id      	string
+	Date    	time.Time
+	Message 	string
+	Developer 	*Developer
+	Files 		map[string]*File
 }
 
 func (c *Commit) String() string {
-	return fmt.Sprintf("%s by %s: %q @ %v", c.id, c.dev, c.message, c.date)
+	return fmt.Sprintf("%s by %s: %q @ %v", c.Id, c.Developer, c.Message, c.Date)
 }
