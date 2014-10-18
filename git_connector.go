@@ -83,8 +83,14 @@ func (c *GitConnector) AllCommits() map[string]*Commit {
 			tree.Walk(func(path string, entry *git.TreeEntry) int{
 				if entry.Type == git.ObjectBlob {
 					fileId := entry.Id.String()
-					commit.Files[fileId] = &File{Id: fileId, Path: path + entry.Name}
-					log.Println("\t", path + entry.Name, entry.Id)
+					blob, err := c.Repo.LookupBlob(entry.Id)
+					if err != nil {
+						log.Fatalf("unable to file %s", path + entry.Name)
+					} else {
+						commit.Files[fileId] = &File{Id: fileId, Path: path + entry.Name, Size: blob.Size(), Contents: blob.Contents()}
+						log.Println("\t", path + entry.Name, entry.Id)
+					}
+
 				}
 				return 0
 			})
