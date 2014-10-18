@@ -37,12 +37,36 @@ func (r *Repository) Init() {
 	r.connector.Load(r.remote, r.local)
 }
 
-func (r *Repository) Commits() map[string]*Commit {
+func (r *Repository) AllCommits() map[string]*Commit {
 	return r.connector.Commits()
 }
 
-func (r *Repository) Developers() map[string]*Developer {
+func (r *Repository) AllDevelopers() map[string]*Developer {
 	return r.connector.Developers()
+}
+
+//Lookup for a single commit
+func (r *Repository) FindCommit(id string) *Commit {
+	//TODO implement lockup without questioning all commits
+	commits := r.AllCommits()
+	if commit, ok := commits[id]; ok {
+		log.Printf("found commit with id %s", id)
+		return commit
+	} else {
+		return nil
+	}
+}
+
+//Looks for a specific file in a given commit
+func (r *Repository) FindFileInCommit(fileId string, commitId string) *File {
+	commit := r.FindCommit(commitId)
+	if commit != nil {
+		if file, ok := commit.files[fileId]; ok {
+			log.Printf("found file %s (%s) in commit %s", fileId, file.path, commitId)
+			return file
+		}
+	}
+	return nil
 }
 
 //TODO validate directories

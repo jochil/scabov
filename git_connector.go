@@ -71,7 +71,7 @@ func (c *GitConnector) Commits() map[string]*Commit {
 
 			dev, exists := c.devs[author.Email]
 			if !exists {
-				dev = &Developer{ ident: author.Email, name: author.Name, commits: map[string]*Commit{}}
+				dev = &Developer{ id: author.Email, email: author.Email, name: author.Name, commits: map[string]*Commit{}}
 				c.devs[author.Email] = dev
 			}
 
