@@ -6,3 +6,7 @@ type File struct {
 	Size     int64
 	Contents []byte
 }
+
+func (f *File) String() string {
+	return string(f.Contents[:])
+}
