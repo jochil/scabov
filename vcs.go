@@ -3,7 +3,7 @@ Package vcs
  */
 package vcs
 
-func LoadRemoteRepository(path string) *Repository {
+func LoadRepository(path string) *Repository {
 
 	repo := &Repository{
 		Remote: path,

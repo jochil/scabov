@@ -37,6 +37,16 @@ func (r *Repository) Init() {
 	r.Connector.Load(r.Remote, r.Local)
 }
 
+//TODO replace this naive approach
+func (r *Repository) FirstCommit() *Commit {
+	for _, commit := range r.AllCommits() {
+		if len(commit.Parents) == 0 {
+			return commit
+		}
+	}
+	return nil
+}
+
 func (r *Repository) AllCommits() map[string]*Commit {
 	return r.Connector.AllCommits()
 }
