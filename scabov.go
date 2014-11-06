@@ -12,6 +12,7 @@ import (
 var (
 	repoPath = flag.String("p", "", "(remote) path to an vcs repository")
 	verbose  = flag.Bool("v", false, "activate verbose output")
+	language = flag.String("l", "", "select programming language for analysis")
 )
 
 func main() {
@@ -24,6 +25,15 @@ func main() {
 		log.SetOutput(ioutil.Discard)
 	}
 
+	// handle programming language
+	switch *language{
+	case "":
+		log.Fatal("please select an programming language (e.g. php)")
+	case "php":
+		analyzer.Init(*language)
+	}
+
+
 	// load repo
 	if *repoPath == "" {
 		log.Fatal("repository path missing, e.g.: -p \"mypath/repo\"")
@@ -31,7 +41,7 @@ func main() {
 
 	repo := vcs.LoadRepository(*repoPath)
 
-	for _, dev := range repo.AllDevelopers(){
+	for _, dev := range repo.AllDevelopers() {
 		devData := data.DevData{}
 		devData.Dev = dev.Id
 		devData.Commits = uint16(len(dev.Commits))
