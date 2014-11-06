@@ -3,7 +3,6 @@ package analyzer
 import (
 	"github.com/jochil/vcs"
 	"github.com/sergi/go-diff/diffmatchpatch"
-	"strings"
 	"fmt"
 )
 
@@ -23,12 +22,6 @@ func (d LineSumDiff) String() string {
 	return fmt.Sprintf("Added: %d, Removed %d, Untouched: %d", d.Added, d.Removed, d.Untouched)
 }
 
-//TODO just a temporary implementation for testing/development
-func CountLines(file *vcs.File) uint32 {
-	content := file.String()
-	return uint32(strings.Count(content, "\n") + 1)
-}
-
 //calculates line diff for a developer
 func CalcLineDiff(dev *vcs.Developer) LineSumDiff {
 	lineSumDiff := LineSumDiff{0, 0, 0}
@@ -46,7 +39,9 @@ func CalcLineDiffCommit(commit *vcs.Commit) LineSumDiff {
 	//this is the first commit in the vcs, so count all lines added
 	if len(commit.Parents) == 0 {
 		for _, file := range commit.Files {
-			lineSumDiff.Add(execLineDiff("", file.String()))
+			if ruleSet.ValidExtension(file.Path) {
+				lineSumDiff.Add(execLineDiff("", file.String()))
+			}
 		}
 	}  else {
 
@@ -60,13 +55,15 @@ func CalcLineDiffCommit(commit *vcs.Commit) LineSumDiff {
 				break;
 			}
 
+			from := ""
 			//--what is about deleted files?
 			for _, file := range commit.Files {
-				var from string = ""
-				if parentFile := parentCommit.FileByPath(file.Path); parentFile != nil {
-					from = parentFile.String()
+				if ruleSet.ValidExtension(file.Path) {
+					if parentFile := parentCommit.FileByPath(file.Path); parentFile != nil {
+						from = parentFile.String()
+					}
+					lineSumDiff.Add(execLineDiff(from, file.String()))
 				}
-				lineSumDiff.Add(execLineDiff(from, file.String()))
 			}
 		}
 	}
@@ -92,6 +89,11 @@ func execLineDiff(from string, to string) LineSumDiff {
 		case 0:
 			lineDiff.Untouched++
 		}
+	}
+
+	//if added and removed == 0 the file was not edited in this commit,
+	if lineDiff.Added == 0 && lineDiff.Removed == 0 {
+		lineDiff.Untouched = 0
 	}
 
 	return lineDiff
