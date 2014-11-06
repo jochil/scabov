@@ -18,6 +18,7 @@ func (c *GitConnector) Load(remote string, local string) {
 
 	//TODO init values, should be done in constructor
 	c.Devs = map[string]*Developer{}
+	c.Commits = map[string]*Commit{}
 
 	repo, err := git.OpenRepository(local)
 	if err != nil {
@@ -31,7 +32,7 @@ func (c *GitConnector) Load(remote string, local string) {
 
 func (c GitConnector) AllDevelopers() map[string]*Developer {
 	//TODO replace this with a more efficient way
-	if c.Commits == nil {
+	if len(c.Commits) == 0 {
 		c.AllCommits()
 	}
 
@@ -46,10 +47,9 @@ func (c *GitConnector) AllCommits() map[string]*Commit {
 		log.Fatal("no git repository loaded")
 	}
 
-	if c.Commits != nil {
+	if len(c.Commits) > 0 {
 		return c.Commits
 	}
-	c.Commits = map[string]*Commit{}
 
 	//get object database
 	odb, err := c.Repo.Odb()
