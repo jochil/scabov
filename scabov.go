@@ -5,6 +5,8 @@ import (
 	"log"
 	"flag"
 	"io/ioutil"
+	"github.com/jochil/scabov/data"
+	"github.com/jochil/analyzer"
 )
 
 var (
@@ -29,11 +31,19 @@ func main() {
 
 	repo := vcs.LoadRepository(*repoPath)
 
-	firstCommit := repo.FirstCommit()
-	log.Println("First commit", firstCommit)
+	for _, dev := range repo.AllDevelopers(){
+		devData := data.DevData{}
+		devData.Dev = dev.Id
+		devData.Commits = uint16(len(dev.Commits))
+		devData.LineDiff = analyzer.CalcLineDiff(dev)
+		log.Println(devData.String())
+	}
+
+	//firstCommit := repo.FirstCommit()
+	//log.Println("First commit", firstCommit)
 
 	/*
-	repo.AllDevelopers()
+
 	file1 := repo.FindFileInCommit("869f47702d5b1ec4221e4833a008551792a14632", "83a5be867e7a2355646aeaa0be1389b54bfa1c94")
 	file2 := repo.FindFileInCommit("ca564cbf4736a6f5dfeadae9e14303e0c5e1ad3d", "a2f091edd4143080b9b98493485af80de6e9dbff")
 
