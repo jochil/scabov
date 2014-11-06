@@ -6,12 +6,26 @@ import (
 
 //Developer represents a single developer
 type Developer struct {
-	Id		string
-	Name 	string
-	Email	string
+	Id        string
+	Name      string
+	Email     string
 	Commits map[string]*Commit
 }
 
-func (d *Developer) String() string {
-	return fmt.Sprintf("%s (%s)", d.Name, d.Email)
+func (dev *Developer) FirstCommit() *Commit {
+	var firstCommit *Commit
+	for _, commit := range dev.Commits {
+		if firstCommit == nil {
+			firstCommit = commit
+		}
+		if commit.Date.Before(firstCommit.Date) {
+			firstCommit = commit
+		}
+	}
+
+	return firstCommit
+}
+
+func (dev *Developer) String() string {
+	return fmt.Sprintf("%s (%s)", dev.Name, dev.Email)
 }
