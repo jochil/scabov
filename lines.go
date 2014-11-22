@@ -40,7 +40,7 @@ func CalcLineDiffCommit(commit *vcs.Commit) LineSumDiff {
 	if len(commit.Parents) == 0 {
 		for _, file := range commit.Files {
 			if ruleSet.ValidExtension(file.Path) {
-				lineSumDiff.Add(execLineDiff("", file.String()))
+				lineSumDiff.Add(execLineDiff("", file.Content()))
 			}
 		}
 	}  else {
@@ -60,9 +60,9 @@ func CalcLineDiffCommit(commit *vcs.Commit) LineSumDiff {
 			for _, file := range commit.Files {
 				if ruleSet.ValidExtension(file.Path) {
 					if parentFile := parentCommit.FileByPath(file.Path); parentFile != nil {
-						from = parentFile.String()
+						from = parentFile.Content()
 					}
-					lineSumDiff.Add(execLineDiff(from, file.String()))
+					lineSumDiff.Add(execLineDiff(from, file.Content()))
 				}
 			}
 		}

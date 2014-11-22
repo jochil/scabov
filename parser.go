@@ -20,7 +20,7 @@ type PHPParser struct {
 
 // parses vcs file to internal data structures (Element)
 func (parser *PHPParser) Elements(file *vcs.File) []Element {
-	code := file.String()
+	code := file.Content()
 
 	//TODO remove, just here for testing
 	code = `<?php
