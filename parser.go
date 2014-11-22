@@ -195,7 +195,7 @@ func (parser *PHPParser) readIfStmtIntoCfg(cfg *ControlFlowGraph, ifStmt *ast.If
 //TODO remove, just here for debugging & testing
 func TestParser(repo *vcs.Repository) {
 
-	for _, commit := range repo.AllCommits() {
+	for _, commit := range repo.Commits {
 		for _, file := range commit.Files {
 			if ruleSet.ValidExtension(file.Path) {
 
