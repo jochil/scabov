@@ -16,6 +16,7 @@ type GitConnector struct {
 	repo       *git.Repository
 	commits    map[string]*Commit
 	developers map[string]*Developer
+	files      map[string]*File
 }
 
 //loads an existing repository or clone it from remote
@@ -33,6 +34,7 @@ func (c *GitConnector) Load(remote string, local string) (map[string]*Commit, ma
 
 	c.developers = map[string]*Developer{}
 	c.commits = map[string]*Commit{}
+	c.files = map[string]*File{}
 
 	c.fetchAll()
 
@@ -92,7 +94,6 @@ func (c GitConnector) createCommit(gitCommit *git.Commit) *Commit {
 		Parents: map[string]*Commit{},
 		Children: map[string]*Commit{},
 	}
-	log.Println("found commit:", commit)
 
 	//iterate over files
 	tree, _ := gitCommit.Tree()
@@ -101,9 +102,16 @@ func (c GitConnector) createCommit(gitCommit *git.Commit) *Commit {
 			fileId := entry.Id.String()
 			blob, err := c.repo.LookupBlob(entry.Id)
 			if err != nil {
-				log.Fatalf("unable to file %s", path+entry.Name)
+				log.Fatalf("unable to lookup file %s", path+entry.Name)
 			} else {
-				commit.Files[fileId] = &File{Id: fileId, Path: path+entry.Name, Size: blob.Size(), Contents: blob.Contents()}
+				if file, exists := c.files[fileId]; exists {
+					commit.Files[fileId] = file
+				}else {
+					file := &File{Id: fileId, Path: path + entry.Name, Size: blob.Size(), Contents: blob.Contents()}
+					commit.Files[fileId] = file
+					c.files[fileId] = file
+				}
+
 			}
 
 		}
