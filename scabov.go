@@ -39,9 +39,9 @@ func main() {
 		log.Fatal("repository path missing, e.g.: -p \"mypath/repo\"")
 	}
 
-	repo := vcs.LoadRepository(*repoPath)
+	repo := vcs.NewRepository(*repoPath)
 
-	for _, dev := range repo.AllDevelopers() {
+	for _, dev := range repo.Developers {
 		devData := data.DevData{}
 		devData.Dev = dev.Id
 		devData.Commits = uint16(len(dev.Commits))
