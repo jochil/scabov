@@ -4,6 +4,7 @@ import (
 	git "github.com/libgit2/git2go"
 	"os"
 	"log"
+	"path"
 )
 
 //common interface for all vcs connectors
@@ -14,6 +15,8 @@ type Connector interface {
 //internal struct for this connecotr
 type GitConnector struct {
 	repo       *git.Repository
+	localPath   string
+	storagePath string
 	commits    map[string]*Commit
 	developers map[string]*Developer
 	files      map[string]*File
@@ -27,9 +30,17 @@ func (c *GitConnector) Load(remote string, local string) (map[string]*Commit, ma
 	if err != nil {
 		os.RemoveAll(local)
 		c.repo = c.cloneGitRepo(remote, local)
+		log.Printf("cloned git repo from %s to %s", remote, local)
 	} else {
-		log.Printf("opened git repo in %s", repo.Path())
+		log.Printf("opened git repo in %s", local)
 		c.repo = repo
+	}
+
+	c.localPath = local
+	c.storagePath = path.Join(c.localPath, "file_storage")
+	var fm os.FileMode = 0700
+	if err := os.MkdirAll(c.storagePath, fm); err != nil {
+		log.Fatalln("unable to create storage directory %s", c.storagePath)
 	}
 
 	c.developers = map[string]*Developer{}
@@ -97,23 +108,24 @@ func (c GitConnector) createCommit(gitCommit *git.Commit) *Commit {
 
 	//iterate over files
 	tree, _ := gitCommit.Tree()
-	tree.Walk((git.TreeWalkCallback)(func(path string, entry *git.TreeEntry) int {
+	tree.Walk((git.TreeWalkCallback)(func(filepath string, entry *git.TreeEntry) int {
 		if entry.Type == git.ObjectBlob {
 			fileId := entry.Id.String()
 			blob, err := c.repo.LookupBlob(entry.Id)
 			if err != nil {
-				log.Fatalf("unable to lookup file %s", path+entry.Name)
+				log.Fatalf("unable to lookup file %s", filepath+entry.Name)
 			} else {
 				if file, exists := c.files[fileId]; exists {
 					commit.Files[fileId] = file
 				}else {
-					file := &File{Id: fileId, Path: path + entry.Name, Size: blob.Size(), Contents: blob.Contents()}
+					fileStorage := path.Join(c.storagePath, fileId)
+					storeFile(fileStorage, blob.Contents())
+
+					file := &File{Id: fileId, Path: filepath + entry.Name, Size: blob.Size(), StoragePath: fileStorage}
 					commit.Files[fileId] = file
 					c.files[fileId] = file
 				}
-
 			}
-
 		}
 		return 0
 	}))
@@ -139,11 +151,10 @@ func (c GitConnector) createCommit(gitCommit *git.Commit) *Commit {
 
 func (c GitConnector) cloneGitRepo(remote string, local string) *git.Repository {
 	checkoutOpts := &git.CheckoutOpts{Strategy:git.CheckoutForce}
-	cloneOpts := &git.CloneOptions{CheckoutOpts: checkoutOpts}
+	cloneOpts := &git.CloneOptions{CheckoutOpts: checkoutOpts, Bare: true}
 	repo, err := git.Clone(remote, local, cloneOpts)
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("cloned git repo to %s", repo.Path())
 	return repo
 }

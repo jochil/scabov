@@ -20,9 +20,9 @@ type Repository struct {
 	Commits      map[string]*Commit
 	Developers   map[string]*Developer
 
-	connector    Connector
-	remote       string
-	local        string
+	connector      Connector
+	remote         string
+	local          string
 }
 
 /*
