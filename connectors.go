@@ -6,59 +6,54 @@ import (
 	"log"
 )
 
+//common interface for all vcs connectors
+type Connector interface {
+	Load(remote string, local string) (map[string]*Commit, map[string]*Developer)
+}
+
 //internal struct for this connecotr
 type GitConnector struct {
-	Repo *git.Repository
-	Commits map[string]*Commit
-	Devs map[string]*Developer
+	repo       *git.Repository
+	commits    map[string]*Commit
+	developers map[string]*Developer
 }
 
 //loads an existing repository or clone it from remote
-func (c *GitConnector) Load(remote string, local string) {
-
-	//TODO init values, should be done in constructor
-	c.Devs = map[string]*Developer{}
-	c.Commits = map[string]*Commit{}
+func (c *GitConnector) Load(remote string, local string) (map[string]*Commit, map[string]*Developer) {
 
 	repo, err := git.OpenRepository(local)
+
 	if err != nil {
 		os.RemoveAll(local)
-		c.Repo = c.cloneGitRepo(remote, local)
+		c.repo = c.cloneGitRepo(remote, local)
 	} else {
 		log.Printf("opened git repo in %s", repo.Path())
-		c.Repo = repo
-	}
-}
-
-func (c GitConnector) AllDevelopers() map[string]*Developer {
-	//TODO replace this with a more efficient way
-	if len(c.Commits) == 0 {
-		c.AllCommits()
+		c.repo = repo
 	}
 
-	log.Printf("found %d developers in git repo", len(c.Devs))
-	return c.Devs
+	c.developers = map[string]*Developer{}
+	c.commits = map[string]*Commit{}
+
+	c.fetchAll()
+
+	return c.commits, c.developers
 }
 
 //return all commits
-func (c *GitConnector) AllCommits() map[string]*Commit {
+func (c *GitConnector) fetchAll() {
 
-	if c.Repo == nil {
+	if c.repo == nil {
 		log.Fatal("no git repository loaded")
 	}
 
-	if len(c.Commits) > 0 {
-		return c.Commits
-	}
-
 	//get object database
-	odb, err := c.Repo.Odb()
+	odb, err := c.repo.Odb()
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	err = odb.ForEach((git.OdbForEachCallback)(func(oid *git.Oid) error {
-		obj, err := c.Repo.Lookup(oid)
+		obj, err := c.repo.Lookup(oid)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -66,14 +61,13 @@ func (c *GitConnector) AllCommits() map[string]*Commit {
 		//filter commits
 		switch obj := obj.(type) {
 		case *git.Commit:
-			if _, exists := c.Commits[obj.Id().String()]; exists == false {
+			if _, exists := c.commits[obj.Id().String()]; exists == false {
 				c.createCommit(obj)
 			}
 		}
 		return nil
 	}))
-	log.Printf("loaded %d commits from git repo", len(c.Commits))
-	return c.Commits
+	log.Printf("loaded %d commits from git repo", len(c.commits))
 }
 
 /*
@@ -83,10 +77,10 @@ recursively create objects for parent commits
 func (c GitConnector) createCommit(gitCommit *git.Commit) *Commit {
 
 	author := gitCommit.Author()
-	dev, exists := c.Devs[author.Email]
+	dev, exists := c.developers[author.Email]
 	if !exists {
 		dev = &Developer{ Id: author.Email, Email: author.Email, Name: author.Name, Commits: map[string]*Commit{}}
-		c.Devs[author.Email] = dev
+		c.developers[author.Email] = dev
 	}
 
 	commit := &Commit{
@@ -105,7 +99,7 @@ func (c GitConnector) createCommit(gitCommit *git.Commit) *Commit {
 	tree.Walk((git.TreeWalkCallback)(func(path string, entry *git.TreeEntry) int {
 		if entry.Type == git.ObjectBlob {
 			fileId := entry.Id.String()
-			blob, err := c.Repo.LookupBlob(entry.Id)
+			blob, err := c.repo.LookupBlob(entry.Id)
 			if err != nil {
 				log.Fatalf("unable to file %s", path+entry.Name)
 			} else {
@@ -116,14 +110,14 @@ func (c GitConnector) createCommit(gitCommit *git.Commit) *Commit {
 		return 0
 	}))
 
-	c.Commits[gitCommit.Id().String()] = commit
+	c.commits[gitCommit.Id().String()] = commit
 	dev.Commits[gitCommit.Id().String()] = commit
 
 	//iterate over parent commits and create or reference them
 	for n := uint(0); n < gitCommit.ParentCount(); n++ {
 		parentGitCommit := gitCommit.Parent(n)
 		var parentCommit *Commit;
-		if parentCommit, exists = c.Commits[parentGitCommit.Id().String()]; !exists {
+		if parentCommit, exists = c.commits[parentGitCommit.Id().String()]; !exists {
 			parentCommit = c.createCommit(parentGitCommit)
 		}
 		commit.Parents[parentGitCommit.Id().String()] = parentCommit
