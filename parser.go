@@ -197,7 +197,7 @@ func TestParser(repo *vcs.Repository) {
 
 	for _, commit := range repo.Commits {
 		for _, file := range commit.Files {
-			if ruleSet.ValidExtension(file.Path) {
+			if Filter.ValidExtension(file.Path) {
 
 				parser := PHPParser{}
 				parser.Elements(file)
