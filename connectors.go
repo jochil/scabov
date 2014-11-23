@@ -49,6 +49,9 @@ func (c *GitConnector) Load(remote string, local string) (map[string]*Commit, ma
 
 	c.fetchAll()
 
+	log.Printf("loaded %d commits, %d delevopers and %d files from git repo",
+		len(c.commits), len(c.developers), len(c.files))
+
 	return c.commits, c.developers
 }
 
@@ -80,7 +83,6 @@ func (c *GitConnector) fetchAll() {
 		}
 		return nil
 	}))
-	log.Printf("loaded %d commits from git repo", len(c.commits))
 }
 
 /*
@@ -117,8 +119,9 @@ func (c GitConnector) createCommit(gitCommit *git.Commit) *Commit {
 			} else {
 				if file, exists := c.files[fileId]; exists {
 					commit.Files[fileId] = file
-				}else {
+				}else if Filter.ValidExtension(entry.Name) {
 					fileStorage := path.Join(c.storagePath, fileId)
+
 					storeFile(fileStorage, blob.Contents())
 
 					file := &File{Id: fileId, Path: filepath + entry.Name, Size: blob.Size(), StoragePath: fileStorage}
