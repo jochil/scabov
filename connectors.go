@@ -49,7 +49,7 @@ func (c *GitConnector) Load(remote string, local string) (map[string]*Commit, ma
 
 	c.fetchAll()
 
-	log.Printf("loaded %d commits, %d delevopers and %d files from git repo",
+	log.Printf("loaded %d commits, %d delevopers and %d different files from git repo",
 		len(c.commits), len(c.developers), len(c.files))
 
 	return c.commits, c.developers
@@ -94,7 +94,12 @@ func (c GitConnector) createCommit(gitCommit *git.Commit) *Commit {
 	author := gitCommit.Author()
 	dev, exists := c.developers[author.Email]
 	if !exists {
-		dev = &Developer{ Id: author.Email, Email: author.Email, Name: author.Name, Commits: map[string]*Commit{}}
+		dev = &Developer{
+			Id: author.Email,
+			Email: author.Email,
+			Name: author.Name,
+			Commits: map[string]*Commit{},
+		}
 		c.developers[author.Email] = dev
 	}
 
@@ -104,28 +109,13 @@ func (c GitConnector) createCommit(gitCommit *git.Commit) *Commit {
 		Message: gitCommit.Message(),
 		Date: author.When,
 		Files: map[string]*File{},
+		ChangedFiles: map[string]*File{},
+		RemovedFiles: map[string]*File{},
+		NewFiles: map[string]*File{},
+		RenamedFiles: map[string]*File{},
 		Parents: map[string]*Commit{},
 		Children: map[string]*Commit{},
 	}
-
-	//iterate over files
-	tree, _ := gitCommit.Tree()
-	tree.Walk((git.TreeWalkCallback)(func(filepath string, entry *git.TreeEntry) int {
-		if entry.Type == git.ObjectBlob {
-
-			if Filter.ValidExtension(entry.Name) {
-				fileId := entry.Id.String()
-				if file, exists := c.files[fileId]; exists {
-					commit.Files[fileId] = file
-				} else {
-					file := c.loadFile(filepath, entry)
-					commit.Files[fileId] = file
-					c.files[fileId] = file
-				}
-			}
-		}
-		return 0
-	}))
 
 	c.commits[gitCommit.Id().String()] = commit
 	dev.Commits[gitCommit.Id().String()] = commit
@@ -142,19 +132,60 @@ func (c GitConnector) createCommit(gitCommit *git.Commit) *Commit {
 
 	}
 
+	//iterate over files
+	tree, _ := gitCommit.Tree()
+	tree.Walk((git.TreeWalkCallback)(func(dir string, entry *git.TreeEntry) int {
+		if entry.Type == git.ObjectBlob {
+
+			if Filter.ValidExtension(entry.Name) {
+				var file *File;
+				fileId := entry.Id.String()
+				filepath := dir + entry.Name
+
+				if file, exists = c.files[fileId]; exists {
+					commit.Files[filepath] = file
+				} else {
+					file = c.loadFile(entry)
+					commit.Files[filepath] = file
+					c.files[fileId] = file
+				}
+
+				//connect with parent commits
+				if len(commit.Parents) == 0 {
+					commit.NewFiles[filepath] = file
+				} else {
+					for _, parentCommit := range commit.Parents {
+						if parentFile := parentCommit.FileById(file.Id); parentFile != nil {
+							if parentCommit.FileByPath(filepath) == nil {
+								commit.RenamedFiles[filepath] = file
+							}
+						} else if parentFile := parentCommit.FileByPath(filepath); parentFile != nil{
+							commit.ChangedFiles[filepath] = file
+						} else {
+							commit.NewFiles[filepath] = file
+						}
+					}
+				}
+				//TODO and deleted files
+
+			}
+		}
+		return 0
+	}))
+
 	return commit
 
 }
 
-func (c GitConnector) loadFile(filepath string, entry *git.TreeEntry) *File {
+func (c GitConnector) loadFile(entry *git.TreeEntry) *File {
 	fileId := entry.Id.String()
 	var file *File;
 	if blob, err := c.repo.LookupBlob(entry.Id); err == nil {
 		fileStorage := path.Join(c.storagePath, fileId)
 		storeFile(fileStorage, blob.Contents())
-		file = &File{Id: fileId, Path: filepath+entry.Name, Size: blob.Size(), StoragePath: fileStorage}
+		file = &File{Id: fileId, Size: blob.Size(), StoragePath: fileStorage}
 	} else {
-		log.Fatalf("unable to lookup file %s", filepath+entry.Name)
+		log.Fatalf("unable to lookup file %s", entry.Name)
 	}
 	return file
 }

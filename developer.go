@@ -9,7 +9,7 @@ type Developer struct {
 	Id        string
 	Name      string
 	Email     string
-	Commits map[string]*Commit
+	Commits   map[string]*Commit
 }
 
 func (dev *Developer) FirstCommit() *Commit {

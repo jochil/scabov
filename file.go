@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"os"
 	"log"
+	"fmt"
 )
 
 // stores file to local path
@@ -19,9 +20,11 @@ func storeFile(path string, content []byte) {
 
 type File struct {
 	Id          string
-	Path        string
 	Size        int64
 	StoragePath string
+}
+func (f *File) String() string {
+	return fmt.Sprintf("%s[%d bytes]", f.Id, f.Size)
 }
 
 // returns file content as string

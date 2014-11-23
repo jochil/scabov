@@ -77,7 +77,7 @@ func (r *Repository) FindFileInCommit(fileId string, commitId string) *File {
 	commit := r.FindCommit(commitId)
 	if commit != nil {
 		if file, ok := commit.Files[fileId]; ok {
-			log.Printf("found file %s (%s) in commit %s", file.Id, file.Path, commitId)
+			log.Printf("found file %s in commit %s", file.Id, commitId)
 			return file
 		}
 	}
