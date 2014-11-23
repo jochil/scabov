@@ -38,8 +38,8 @@ func CalcLineDiffCommit(commit *vcs.Commit) LineSumDiff {
 
 	//this is the first commit in the vcs, so count all lines added
 	if len(commit.Parents) == 0 {
-		for _, file := range commit.Files {
-			if Filter.ValidExtension(file.Path) {
+		for path, file := range commit.Files {
+			if Filter.ValidExtension(path) {
 				lineSumDiff.Add(execLineDiff("", file.Content()))
 			}
 		}
@@ -57,9 +57,9 @@ func CalcLineDiffCommit(commit *vcs.Commit) LineSumDiff {
 
 			from := ""
 			//--what is about deleted files?
-			for _, file := range commit.Files {
-				if Filter.ValidExtension(file.Path) {
-					if parentFile := parentCommit.FileByPath(file.Path); parentFile != nil {
+			for path, file := range commit.Files {
+				if Filter.ValidExtension(path) {
+					if parentFile := parentCommit.FileByPath(path); parentFile != nil {
 						from = parentFile.Content()
 					}
 					lineSumDiff.Add(execLineDiff(from, file.Content()))

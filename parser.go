@@ -196,8 +196,8 @@ func (parser *PHPParser) readIfStmtIntoCfg(cfg *ControlFlowGraph, ifStmt *ast.If
 func TestParser(repo *vcs.Repository) {
 
 	for _, commit := range repo.Commits {
-		for _, file := range commit.Files {
-			if Filter.ValidExtension(file.Path) {
+		for path, file := range commit.Files {
+			if Filter.ValidExtension(path) {
 
 				parser := PHPParser{}
 				parser.Elements(file)
