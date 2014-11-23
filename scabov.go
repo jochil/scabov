@@ -5,7 +5,6 @@ import (
 	"log"
 	"flag"
 	"io/ioutil"
-	"github.com/jochil/scabov/data"
 	"github.com/jochil/analyzer"
 )
 
@@ -25,13 +24,9 @@ func main() {
 		log.SetOutput(ioutil.Discard)
 	}
 
-	// handle programming language
-	switch *language{
-	case "":
-		log.Fatal("please select an programming language (e.g. php)")
-	case "php":
-		analyzer.Init(*language)
-	}
+	filter := vcs.NewLanguageFilter(*language)
+	vcs.Filter = filter
+	analyzer.Filter = filter
 
 
 	// load repo
@@ -41,14 +36,32 @@ func main() {
 
 	repo := vcs.NewRepository(*repoPath)
 
+
+
+	log.Println("-------------")
+	for _, dev := range repo.Developers {
+		for _, commit := range dev.Commits {
+			log.Println(commit)
+			for path, file := range commit.Files {
+				log.Println("\t", path, file)
+			}
+		}
+	}
+
+	/*
+	log.Println("-------------")
 	for _, dev := range repo.Developers {
 		devData := data.DevData{}
 		devData.Dev = dev.Id
 		devData.Commits = uint16(len(dev.Commits))
 		devData.LineDiff = analyzer.CalcLineDiff(dev)
 		log.Println(devData.String())
+		log.Printf("\t FileDiff: Added: %d, Removed: %d, Changed: %d",
+			len(dev.NewFiles), len(dev.RemovedFiles), len(dev.ChangedFiles),
+		)
 	}
 
+	*/
 	//firstCommit := repo.FirstCommit()
 	//log.Println("First commit", firstCommit)
 
