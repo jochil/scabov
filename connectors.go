@@ -112,19 +112,13 @@ func (c GitConnector) createCommit(gitCommit *git.Commit) *Commit {
 	tree, _ := gitCommit.Tree()
 	tree.Walk((git.TreeWalkCallback)(func(filepath string, entry *git.TreeEntry) int {
 		if entry.Type == git.ObjectBlob {
-			fileId := entry.Id.String()
-			blob, err := c.repo.LookupBlob(entry.Id)
-			if err != nil {
-				log.Fatalf("unable to lookup file %s", filepath+entry.Name)
-			} else {
+
+			if Filter.ValidExtension(entry.Name) {
+				fileId := entry.Id.String()
 				if file, exists := c.files[fileId]; exists {
 					commit.Files[fileId] = file
-				}else if Filter.ValidExtension(entry.Name) {
-					fileStorage := path.Join(c.storagePath, fileId)
-
-					storeFile(fileStorage, blob.Contents())
-
-					file := &File{Id: fileId, Path: filepath + entry.Name, Size: blob.Size(), StoragePath: fileStorage}
+				} else {
+					file := c.loadFile(filepath, entry)
 					commit.Files[fileId] = file
 					c.files[fileId] = file
 				}
@@ -150,6 +144,19 @@ func (c GitConnector) createCommit(gitCommit *git.Commit) *Commit {
 
 	return commit
 
+}
+
+func (c GitConnector) loadFile(filepath string, entry *git.TreeEntry) *File {
+	fileId := entry.Id.String()
+	var file *File;
+	if blob, err := c.repo.LookupBlob(entry.Id); err == nil {
+		fileStorage := path.Join(c.storagePath, fileId)
+		storeFile(fileStorage, blob.Contents())
+		file = &File{Id: fileId, Path: filepath+entry.Name, Size: blob.Size(), StoragePath: fileStorage}
+	} else {
+		log.Fatalf("unable to lookup file %s", filepath+entry.Name)
+	}
+	return file
 }
 
 func (c GitConnector) cloneGitRepo(remote string, local string) *git.Repository {

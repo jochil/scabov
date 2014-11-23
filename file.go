@@ -8,9 +8,12 @@ import (
 
 // stores file to local path
 func storeFile(path string, content []byte) {
-	var perm os.FileMode = 0600
-	if err := ioutil.WriteFile(path, content, perm); err != nil {
-		log.Fatalln(err)
+
+	if _, err := os.Stat(path); err != nil {
+		var perm os.FileMode = 0600
+		if err := ioutil.WriteFile(path, content, perm); err != nil {
+			log.Fatalln(err)
+		}
 	}
 }
 

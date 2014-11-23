@@ -3,6 +3,7 @@ package vcs
 import (
 	"strings"
 	"path/filepath"
+	"log"
 )
 
 const (
@@ -21,6 +22,8 @@ func NewLanguageFilter(lang string) LanguageFilter {
 	case PHP:
 		filter = PHPFilter{}
 	}
+
+	log.Printf("used %s filter", lang)
 
 	return filter;
 }
