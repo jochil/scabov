@@ -1,7 +1,7 @@
 package vcs
 
 import (
-	git "github.com/libgit2/git2go"
+	git "github.com/jochil/git2go"
 	"os"
 	"log"
 	"path"
@@ -132,60 +132,101 @@ func (c GitConnector) createCommit(gitCommit *git.Commit) *Commit {
 
 	}
 
-	//iterate over files
 	tree, _ := gitCommit.Tree()
-	tree.Walk((git.TreeWalkCallback)(func(dir string, entry *git.TreeEntry) int {
-		if entry.Type == git.ObjectBlob {
 
-			if Filter.ValidExtension(entry.Name) {
+	if gitCommit.ParentCount() == 0 {
+		c.loadTreeDiffToCommit(commit, &git.Tree{}, tree)
+	}
+
+	for n := uint(0); n < gitCommit.ParentCount(); n++ {
+		parentGitCommit := gitCommit.Parent(n)
+		parentTree, _ := parentGitCommit.Tree()
+		c.loadTreeDiffToCommit(commit, parentTree, tree)
+	}
+	return commit
+}
+
+func (c GitConnector) loadTreeDiffToCommit(commit *Commit, parentTree *git.Tree, newTree *git.Tree) {
+	diffOpt, err := git.DefaultDiffOptions()
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	diff, err := c.repo.DiffTreeToTree(parentTree, newTree, &diffOpt)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	findOpts, _ := git.DefaultDiffFindOptions()
+	findOpts.Flags += git.DiffFindAll
+	diff.FindSimilar(&findOpts)
+	err = diff.ForEach((git.DiffForEachFileCallback)(func(delta git.DiffDelta, progress float64) (git.DiffForEachHunkCallback, error) {
+			if Filter.ValidExtension(delta.NewFile.Path) {
+
 				var file *File;
-				fileId := entry.Id.String()
-				filepath := dir + entry.Name
+				fileId := delta.NewFile.Oid.String()
+				filepath := delta.NewFile.Path
+				var exists bool
 
 				if file, exists = c.files[fileId]; exists {
-					commit.Files[filepath] = file
+					commit.Files[fileId] = file
+				} else if delta.NewFile.Oid.IsZero() {
+
+					var oldFile *File
+					if oldFile, exists = c.files[delta.OldFile.Oid.String()]; exists == false {
+						oldFile = c.loadFile(delta.OldFile.Oid)
+					}
+					commit.RemovedFiles[delta.OldFile.Path] = oldFile
 				} else {
-					file = c.loadFile(entry)
+					file = c.loadFile(delta.NewFile.Oid)
 					commit.Files[filepath] = file
 					c.files[fileId] = file
 				}
 
-				//connect with parent commits
-				if len(commit.Parents) == 0 {
+				var status string
+				switch delta.Status{
+
+				case git.DeltaModified:
+					status = "Modified"
+					commit.ChangedFiles[filepath] = file
+				case git.DeltaAdded:
+					status = "Added"
 					commit.NewFiles[filepath] = file
-				} else {
-					for _, parentCommit := range commit.Parents {
-						if parentFile := parentCommit.FileById(file.Id); parentFile != nil {
-							if parentCommit.FileByPath(filepath) == nil {
-								commit.RenamedFiles[filepath] = file
-							}
-						} else if parentFile := parentCommit.FileByPath(filepath); parentFile != nil{
-							commit.ChangedFiles[filepath] = file
-						} else {
-							commit.NewFiles[filepath] = file
-						}
+				case git.DeltaRenamed:
+					status = "Renamed"
+					commit.RenamedFiles[filepath] = file
+					if delta.Similarity != 100 {
+						status += "/Modified"
+						commit.ChangedFiles[filepath] = file
 					}
+				case git.DeltaDeleted:
+					status = "Deleted"
+				case git.DeltaCopied:
+					status = "Copied"
+
+				default:
+					status = "unknown"
 				}
-				//TODO and deleted files
 
+				//log.Println(status, delta.Similarity, delta.OldFile.Path, delta.OldFile.Oid, delta.NewFile.Path, delta.NewFile.Oid)
 			}
-		}
-		return 0
-	}))
 
-	return commit
-
+			return func(hunk git.DiffHunk) (git.DiffForEachLineCallback, error) {
+				return func(line git.DiffLine) error {
+					return nil
+				}, nil
+			}, nil
+		}), git.DiffDetailLines)
 }
 
-func (c GitConnector) loadFile(entry *git.TreeEntry) *File {
-	fileId := entry.Id.String()
+func (c GitConnector) loadFile(oid *git.Oid) *File {
 	var file *File;
-	if blob, err := c.repo.LookupBlob(entry.Id); err == nil {
-		fileStorage := path.Join(c.storagePath, fileId)
+	if blob, err := c.repo.LookupBlob(oid); err == nil {
+		fileStorage := path.Join(c.storagePath, oid.String())
 		storeFile(fileStorage, blob.Contents())
-		file = &File{Id: fileId, Size: blob.Size(), StoragePath: fileStorage}
+		file = &File{Id: oid.String(), Size: blob.Size(), StoragePath: fileStorage}
 	} else {
-		log.Fatalf("unable to lookup file %s", entry.Name)
+		log.Fatalf("unable to lookup file %s", oid)
 	}
 	return file
 }
