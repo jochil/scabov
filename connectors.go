@@ -166,17 +166,22 @@ func (c GitConnector) loadTreeDiffToCommit(commit *Commit, parentTree *git.Tree,
 			var file *File
 			fileId := delta.NewFile.Oid.String()
 			filepath := delta.NewFile.Path
+
+			var oldFile *File
+			oldFileId := delta.OldFile.Oid.String()
+			oldFilepath := delta.OldFile.Path
+
 			var exists bool
+
+			if oldFile, exists = c.files[oldFileId]; exists == false && delta.OldFile.Oid.IsZero() == false {
+				oldFile = c.loadFile(delta.OldFile.Oid)
+				c.files[oldFileId] = oldFile
+			}
 
 			if file, exists = c.files[fileId]; exists {
 				commit.Files[fileId] = file
 			} else if delta.NewFile.Oid.IsZero() {
-
-				var oldFile *File
-				if oldFile, exists = c.files[delta.OldFile.Oid.String()]; exists == false {
-					oldFile = c.loadFile(delta.OldFile.Oid)
-				}
-				commit.RemovedFiles[delta.OldFile.Path] = oldFile
+				commit.RemovedFiles[oldFilepath] = oldFile
 			} else {
 				file = c.loadFile(delta.NewFile.Oid)
 				commit.Files[filepath] = file
@@ -189,6 +194,7 @@ func (c GitConnector) loadTreeDiffToCommit(commit *Commit, parentTree *git.Tree,
 			case git.DeltaModified:
 				status = "Modified"
 				commit.ChangedFiles[filepath] = file
+				file.Parents = append(file.Parents, oldFile)
 			case git.DeltaAdded:
 				status = "Added"
 				commit.AddedFiles[filepath] = file
@@ -198,6 +204,7 @@ func (c GitConnector) loadTreeDiffToCommit(commit *Commit, parentTree *git.Tree,
 				if delta.Similarity != 100 {
 					status += "/Modified"
 					commit.ChangedFiles[filepath] = file
+					file.Parents = append(file.Parents, oldFile)
 				}
 			case git.DeltaDeleted:
 				status = "Deleted"

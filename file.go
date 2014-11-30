@@ -22,6 +22,7 @@ type File struct {
 	Id          string
 	Size        int64
 	StoragePath string
+	Parents     []*File
 }
 
 func (f *File) String() string {

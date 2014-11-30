@@ -16,7 +16,7 @@ type Commit struct {
 	RemovedFiles map[string]*File
 	ChangedFiles map[string]*File
 	AddedFiles   map[string]*File
-	MovedFiles map[string]*File
+	MovedFiles   map[string]*File
 
 	Parents  map[string]*Commit
 	Children map[string]*Commit
