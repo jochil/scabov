@@ -6,10 +6,10 @@ import (
 
 //Developer represents a single developer
 type Developer struct {
-	Id        string
-	Name      string
-	Email     string
-	Commits   map[string]*Commit
+	Id      string
+	Name    string
+	Email   string
+	Commits map[string]*Commit
 }
 
 func (dev *Developer) FirstCommit() *Commit {

@@ -1,16 +1,16 @@
 package vcs
 
 import (
-	"time"
 	"fmt"
+	"time"
 )
 
 //Commit represents a single commit
 type Commit struct {
-	Id           string
-	Date         time.Time
-	Message      string
-	Developer    *Developer
+	Id        string
+	Date      time.Time
+	Message   string
+	Developer *Developer
 
 	Files        map[string]*File
 	RemovedFiles map[string]*File
@@ -18,8 +18,8 @@ type Commit struct {
 	NewFiles     map[string]*File
 	RenamedFiles map[string]*File
 
-	Parents      map[string]*Commit
-	Children     map[string]*Commit
+	Parents  map[string]*Commit
+	Children map[string]*Commit
 }
 
 func (c *Commit) String() string {

@@ -1,10 +1,10 @@
 package vcs
 
 import (
-	"io/ioutil"
-	"os"
-	"log"
 	"fmt"
+	"io/ioutil"
+	"log"
+	"os"
 )
 
 // stores file to local path
@@ -23,6 +23,7 @@ type File struct {
 	Size        int64
 	StoragePath string
 }
+
 func (f *File) String() string {
 	return fmt.Sprintf("%s[%d bytes]", f.Id, f.Size)
 }
@@ -36,5 +37,3 @@ func (f *File) Content() string {
 		return string(content[:])
 	}
 }
-
-

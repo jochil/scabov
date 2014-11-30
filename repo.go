@@ -1,12 +1,12 @@
 package vcs
 
 import (
+	"crypto/sha1"
 	"fmt"
 	"io"
-	"crypto/sha1"
-	"path/filepath"
-	"os"
 	"log"
+	"os"
+	"path/filepath"
 )
 
 const (
@@ -17,17 +17,17 @@ const (
 
 //internal representation of an repository
 type Repository struct {
-	Commits      map[string]*Commit
-	Developers   map[string]*Developer
+	Commits    map[string]*Commit
+	Developers map[string]*Developer
 
-	connector      Connector
-	remote         string
-	local          string
+	connector Connector
+	remote    string
+	local     string
 }
 
 /*
 initialize the repository (connector)
- */
+*/
 func NewRepository(path string) *Repository {
 
 	//TODO evaluate vcs type

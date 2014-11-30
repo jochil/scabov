@@ -1,9 +1,9 @@
 package vcs
 
 import (
-	"strings"
-	"path/filepath"
 	"log"
+	"path/filepath"
+	"strings"
 )
 
 const (
@@ -23,14 +23,13 @@ func NewLanguageFilter(lang string) LanguageFilter {
 		filter = PHPFilter{}
 	}
 
-	log.Printf("used %s filter", lang)
+	log.Printf("use %s filter", lang)
 
-	return filter;
+	return filter
 }
 
 //Filter that filters nothing ;)
 type PassThroughFilter struct {
-
 }
 
 func (filter PassThroughFilter) ValidExtension(path string) bool {
@@ -39,7 +38,6 @@ func (filter PassThroughFilter) ValidExtension(path string) bool {
 
 // PHP filter
 type PHPFilter struct {
-
 }
 
 var phpExtensions = [...]string{

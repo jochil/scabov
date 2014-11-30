@@ -2,8 +2,8 @@ package vcs
 
 import (
 	git "github.com/jochil/git2go"
-	"os"
 	"log"
+	"os"
 	"path"
 )
 
@@ -14,12 +14,12 @@ type Connector interface {
 
 //internal struct for this connecotr
 type GitConnector struct {
-	repo       *git.Repository
+	repo        *git.Repository
 	localPath   string
 	storagePath string
-	commits    map[string]*Commit
-	developers map[string]*Developer
-	files      map[string]*File
+	commits     map[string]*Commit
+	developers  map[string]*Developer
+	files       map[string]*File
 }
 
 //loads an existing repository or clone it from remote
@@ -88,33 +88,33 @@ func (c *GitConnector) fetchAll() {
 /*
 creates an internal commit object based on the git2go commit
 recursively create objects for parent commits
- */
+*/
 func (c GitConnector) createCommit(gitCommit *git.Commit) *Commit {
 
 	author := gitCommit.Author()
 	dev, exists := c.developers[author.Email]
 	if !exists {
 		dev = &Developer{
-			Id: author.Email,
-			Email: author.Email,
-			Name: author.Name,
+			Id:      author.Email,
+			Email:   author.Email,
+			Name:    author.Name,
 			Commits: map[string]*Commit{},
 		}
 		c.developers[author.Email] = dev
 	}
 
 	commit := &Commit{
-		Id: gitCommit.Id().String(),
-		Developer: dev,
-		Message: gitCommit.Message(),
-		Date: author.When,
-		Files: map[string]*File{},
+		Id:           gitCommit.Id().String(),
+		Developer:    dev,
+		Message:      gitCommit.Message(),
+		Date:         author.When,
+		Files:        map[string]*File{},
 		ChangedFiles: map[string]*File{},
 		RemovedFiles: map[string]*File{},
-		NewFiles: map[string]*File{},
+		NewFiles:     map[string]*File{},
 		RenamedFiles: map[string]*File{},
-		Parents: map[string]*Commit{},
-		Children: map[string]*Commit{},
+		Parents:      map[string]*Commit{},
+		Children:     map[string]*Commit{},
 	}
 
 	c.commits[gitCommit.Id().String()] = commit
@@ -123,7 +123,7 @@ func (c GitConnector) createCommit(gitCommit *git.Commit) *Commit {
 	//iterate over parent commits and create or reference them
 	for n := uint(0); n < gitCommit.ParentCount(); n++ {
 		parentGitCommit := gitCommit.Parent(n)
-		var parentCommit *Commit;
+		var parentCommit *Commit
 		if parentCommit, exists = c.commits[parentGitCommit.Id().String()]; !exists {
 			parentCommit = c.createCommit(parentGitCommit)
 		}
@@ -161,66 +161,66 @@ func (c GitConnector) loadTreeDiffToCommit(commit *Commit, parentTree *git.Tree,
 	findOpts.Flags += git.DiffFindAll
 	diff.FindSimilar(&findOpts)
 	err = diff.ForEach((git.DiffForEachFileCallback)(func(delta git.DiffDelta, progress float64) (git.DiffForEachHunkCallback, error) {
-			if Filter.ValidExtension(delta.NewFile.Path) {
+		if Filter.ValidExtension(delta.NewFile.Path) {
 
-				var file *File;
-				fileId := delta.NewFile.Oid.String()
-				filepath := delta.NewFile.Path
-				var exists bool
+			var file *File
+			fileId := delta.NewFile.Oid.String()
+			filepath := delta.NewFile.Path
+			var exists bool
 
-				if file, exists = c.files[fileId]; exists {
-					commit.Files[fileId] = file
-				} else if delta.NewFile.Oid.IsZero() {
+			if file, exists = c.files[fileId]; exists {
+				commit.Files[fileId] = file
+			} else if delta.NewFile.Oid.IsZero() {
 
-					var oldFile *File
-					if oldFile, exists = c.files[delta.OldFile.Oid.String()]; exists == false {
-						oldFile = c.loadFile(delta.OldFile.Oid)
-					}
-					commit.RemovedFiles[delta.OldFile.Path] = oldFile
-				} else {
-					file = c.loadFile(delta.NewFile.Oid)
-					commit.Files[filepath] = file
-					c.files[fileId] = file
+				var oldFile *File
+				if oldFile, exists = c.files[delta.OldFile.Oid.String()]; exists == false {
+					oldFile = c.loadFile(delta.OldFile.Oid)
 				}
-
-				var status string
-				switch delta.Status{
-
-				case git.DeltaModified:
-					status = "Modified"
-					commit.ChangedFiles[filepath] = file
-				case git.DeltaAdded:
-					status = "Added"
-					commit.NewFiles[filepath] = file
-				case git.DeltaRenamed:
-					status = "Renamed"
-					commit.RenamedFiles[filepath] = file
-					if delta.Similarity != 100 {
-						status += "/Modified"
-						commit.ChangedFiles[filepath] = file
-					}
-				case git.DeltaDeleted:
-					status = "Deleted"
-				case git.DeltaCopied:
-					status = "Copied"
-
-				default:
-					status = "unknown"
-				}
-
-				//log.Println(status, delta.Similarity, delta.OldFile.Path, delta.OldFile.Oid, delta.NewFile.Path, delta.NewFile.Oid)
+				commit.RemovedFiles[delta.OldFile.Path] = oldFile
+			} else {
+				file = c.loadFile(delta.NewFile.Oid)
+				commit.Files[filepath] = file
+				c.files[fileId] = file
 			}
 
-			return func(hunk git.DiffHunk) (git.DiffForEachLineCallback, error) {
-				return func(line git.DiffLine) error {
-					return nil
-				}, nil
+			var status string
+			switch delta.Status {
+
+			case git.DeltaModified:
+				status = "Modified"
+				commit.ChangedFiles[filepath] = file
+			case git.DeltaAdded:
+				status = "Added"
+				commit.NewFiles[filepath] = file
+			case git.DeltaRenamed:
+				status = "Renamed"
+				commit.RenamedFiles[filepath] = file
+				if delta.Similarity != 100 {
+					status += "/Modified"
+					commit.ChangedFiles[filepath] = file
+				}
+			case git.DeltaDeleted:
+				status = "Deleted"
+			case git.DeltaCopied:
+				status = "Copied"
+
+			default:
+				status = "unknown"
+			}
+
+			//log.Println(status, delta.Similarity, delta.OldFile.Path, delta.OldFile.Oid, delta.NewFile.Path, delta.NewFile.Oid)
+		}
+
+		return func(hunk git.DiffHunk) (git.DiffForEachLineCallback, error) {
+			return func(line git.DiffLine) error {
+				return nil
 			}, nil
-		}), git.DiffDetailLines)
+		}, nil
+	}), git.DiffDetailLines)
 }
 
 func (c GitConnector) loadFile(oid *git.Oid) *File {
-	var file *File;
+	var file *File
 	if blob, err := c.repo.LookupBlob(oid); err == nil {
 		fileStorage := path.Join(c.storagePath, oid.String())
 		storeFile(fileStorage, blob.Contents())
@@ -232,7 +232,7 @@ func (c GitConnector) loadFile(oid *git.Oid) *File {
 }
 
 func (c GitConnector) cloneGitRepo(remote string, local string) *git.Repository {
-	checkoutOpts := &git.CheckoutOpts{Strategy:git.CheckoutForce}
+	checkoutOpts := &git.CheckoutOpts{Strategy: git.CheckoutForce}
 	cloneOpts := &git.CloneOptions{CheckoutOpts: checkoutOpts, Bare: true}
 	repo, err := git.Clone(remote, local, cloneOpts)
 	if err != nil {
