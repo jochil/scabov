@@ -75,16 +75,14 @@ func (parser *PHPParser) readFunction(name string, body *ast.Block) Function {
 	element.Name = name
 	element.CFG = parser.buildCFG(body)
 	dumpCFG(name, element.CFG)
-
 	return element
 }
 
 // creating the control flow graph for a block struct from language specific parser
 func (parser *PHPParser) buildCFG(block *ast.Block) *gs.Graph {
 	cfg := gs.NewGraph()
-	startNode := gs.NewVertex("start")
-	cfg.AddVertex(startNode)
-	parser.readBlockIntoCfg(cfg, block, []*gs.Vertex{startNode})
+
+	parser.readBlockIntoCfg(cfg, block, []*gs.Vertex{cfg.CreateAndAddToGraph("start")})
 	return cfg
 }
 
@@ -122,8 +120,7 @@ func (parser *PHPParser) readBlockIntoCfg(cfg *gs.Graph, block *ast.Block, start
 // reads a simple statement into a control flow graph
 func (parser *PHPParser) readSimpleStmtIntoCfg(cfg *gs.Graph, label string, startNodes []*gs.Vertex) []*gs.Vertex {
 
-	node := gs.NewVertex(parser.createId(label))
-	cfg.AddVertex(node)
+	node := cfg.CreateAndAddToGraph(parser.createId(label))
 
 	// connect end nodes
 	if len(startNodes) > 0 {
@@ -138,10 +135,7 @@ func (parser *PHPParser) readSimpleStmtIntoCfg(cfg *gs.Graph, label string, star
 //reads a if statement into given cfg struct
 func (parser *PHPParser) readIfStmtIntoCfg(cfg *gs.Graph, ifStmt *ast.IfStmt, startNodes []*gs.Vertex) []*gs.Vertex {
 
-	node := gs.NewVertex(parser.createId(fmt.Sprintf("%T", ifStmt)))
-
-	cfg.AddVertex(node)
-
+	node := cfg.CreateAndAddToGraph(parser.createId(fmt.Sprintf("%T", ifStmt)))
 	endNodes := []*gs.Vertex{}
 
 	// connect end nodes
