@@ -1,11 +1,10 @@
 package analyzer
 
 import (
-
 	"github.com/jochil/vcs"
-	"log"
-	"github.com/stephens2424/php/ast"
 	"github.com/stephens2424/php"
+	"github.com/stephens2424/php/ast"
+	"log"
 )
 
 //interface for encapsulating the language specific parser
@@ -15,7 +14,6 @@ type Parser interface {
 
 // struct for the php parser (implemented against Parser interface)
 type PHPParser struct {
-
 }
 
 // parses vcs file to internal data structures (Element)
@@ -91,14 +89,14 @@ func (parser *PHPParser) readFunction(function *ast.FunctionStmt) Function {
 }
 
 // creating the control flow graph for a block struct from language specific parser
-func (parser *PHPParser) buildCFG(block *ast.Block) (ControlFlowGraph) {
+func (parser *PHPParser) buildCFG(block *ast.Block) ControlFlowGraph {
 	cfg := NewControlFlowGraph()
 	parser.readBlockIntoCfg(cfg, block, nil)
 	return *cfg
 }
 
 // reads a block into a given control flow graph
-func (parser *PHPParser) readBlockIntoCfg(cfg *ControlFlowGraph, block *ast.Block, startNodes []*Node) ([]*Node) {
+func (parser *PHPParser) readBlockIntoCfg(cfg *ControlFlowGraph, block *ast.Block, startNodes []*Node) []*Node {
 
 	var endNodes []*Node
 
@@ -128,7 +126,7 @@ func (parser *PHPParser) readBlockIntoCfg(cfg *ControlFlowGraph, block *ast.Bloc
 }
 
 // reads a simple statement into a control flow graph
-func (parser *PHPParser) readSimpleStmtIntoCfg(cfg *ControlFlowGraph, statement *ast.Statement, startNodes []*Node) ([]*Node) {
+func (parser *PHPParser) readSimpleStmtIntoCfg(cfg *ControlFlowGraph, statement *ast.Statement, startNodes []*Node) []*Node {
 
 	node := NewNode("statement")
 	cfg.Add(node)
@@ -144,7 +142,7 @@ func (parser *PHPParser) readSimpleStmtIntoCfg(cfg *ControlFlowGraph, statement 
 }
 
 //reads a if statement into given cfg struct
-func (parser *PHPParser) readIfStmtIntoCfg(cfg *ControlFlowGraph, ifStmt *ast.IfStmt, startNodes []*Node) ([]*Node) {
+func (parser *PHPParser) readIfStmtIntoCfg(cfg *ControlFlowGraph, ifStmt *ast.IfStmt, startNodes []*Node) []*Node {
 
 	node := NewNode("if")
 	cfg.Add(node)
@@ -160,7 +158,7 @@ func (parser *PHPParser) readIfStmtIntoCfg(cfg *ControlFlowGraph, ifStmt *ast.If
 
 	// handle true branch
 	trueBranch := ifStmt.TrueBranch
-	switch ifTrueType := trueBranch.(type){
+	switch ifTrueType := trueBranch.(type) {
 	case *ast.Block:
 		trueEndNodes := parser.readBlockIntoCfg(cfg, trueBranch.(*ast.Block), []*Node{node})
 		endNodes = append(endNodes, trueEndNodes...)
@@ -169,10 +167,9 @@ func (parser *PHPParser) readIfStmtIntoCfg(cfg *ControlFlowGraph, ifStmt *ast.If
 		log.Fatalf("invalid if branch of type %T", ifTrueType)
 	}
 
-
 	//handle false branch
 	falseBranch := ifStmt.FalseBranch
-	switch ifFalseType := falseBranch.(type){
+	switch ifFalseType := falseBranch.(type) {
 
 	case ast.Block: //no/empty else
 		endNodes = append(endNodes, node)

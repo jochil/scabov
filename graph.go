@@ -19,7 +19,7 @@ func NewNode(label string) *Node {
 
 	lastNodeID++
 	node := &Node{
-		ID: lastNodeID,
+		ID:    lastNodeID,
 		Label: label,
 	}
 	return node
@@ -74,8 +74,7 @@ func (cfg *ControlFlowGraph) CyclomaticComplexity() int {
 	n := len(cfg.nodes)
 	p := len(endNodes)
 
-
-	return e - n + 2 * p
+	return e - n + 2*p
 }
 
 // adds a node to the control flow graph

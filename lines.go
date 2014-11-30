@@ -1,9 +1,9 @@
 package analyzer
 
 import (
+	"fmt"
 	"github.com/jochil/vcs"
 	"github.com/sergi/go-diff/diffmatchpatch"
-	"fmt"
 )
 
 type LineSumDiff struct {
@@ -43,7 +43,7 @@ func CalcLineDiffCommit(commit *vcs.Commit) LineSumDiff {
 				lineSumDiff.Add(execLineDiff("", file.Content()))
 			}
 		}
-	}  else {
+	} else {
 
 		//TODO handle merge
 		if len(commit.Parents) > 1 {
@@ -52,7 +52,7 @@ func CalcLineDiffCommit(commit *vcs.Commit) LineSumDiff {
 			//get one and only parent commit
 			var parentCommit *vcs.Commit
 			for _, parentCommit = range commit.Parents {
-				break;
+				break
 			}
 
 			from := ""

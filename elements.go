@@ -8,7 +8,7 @@ type Element interface {
 
 // Struct representing a single function/method parameter
 type Parameter struct {
-	Name    string
+	Name string
 }
 
 func (parameter *Parameter) String() string {
@@ -17,9 +17,9 @@ func (parameter *Parameter) String() string {
 
 // Struct for abstraction of a single method or function
 type Function struct {
-	Name           string
-	Parameters     []Parameter
-	CFG            ControlFlowGraph
+	Name       string
+	Parameters []Parameter
+	CFG        ControlFlowGraph
 }
 
 func (function *Function) String() string {
