@@ -7,24 +7,22 @@ import (
 )
 
 type LineSumDiff struct {
-	Added     uint32
-	Removed   uint32
-	Untouched uint32
+	NumAdded   uint
+	NumRemoved uint
 }
 
 func (d *LineSumDiff) Add(d2 LineSumDiff) {
-	d.Added += d2.Added
-	d.Removed += d2.Removed
-	d.Untouched += d2.Untouched
+	d.NumAdded += d2.NumAdded
+	d.NumRemoved += d2.NumRemoved
 }
 
 func (d LineSumDiff) String() string {
-	return fmt.Sprintf("Added: %d, Removed %d, Untouched: %d", d.Added, d.Removed, d.Untouched)
+	return fmt.Sprintf("Added: %d, Removed %d", d.NumAdded, d.NumRemoved)
 }
 
 //calculates line diff for a developer
 func CalcLineDiff(dev *vcs.Developer) LineSumDiff {
-	lineSumDiff := LineSumDiff{0, 0, 0}
+	lineSumDiff := LineSumDiff{0, 0}
 	for _, commit := range dev.Commits {
 		lineSumDiff.Add(CalcLineDiffCommit(commit))
 	}
@@ -34,7 +32,7 @@ func CalcLineDiff(dev *vcs.Developer) LineSumDiff {
 //calculates line diff for a commit
 func CalcLineDiffCommit(commit *vcs.Commit) LineSumDiff {
 
-	lineSumDiff := LineSumDiff{0, 0, 0}
+	lineSumDiff := LineSumDiff{0, 0}
 
 	//this is the first commit in the vcs, so count all lines added
 	if len(commit.Parents) == 0 {
@@ -77,23 +75,16 @@ func execLineDiff(from string, to string) LineSumDiff {
 	dmp := diffmatchpatch.New()
 	diffs := dmp.DiffMain(from, to, true)
 
-	lineDiff := LineSumDiff{0, 0, 0}
+	lineDiff := LineSumDiff{0, 0}
 
 	//todo replace -1,0,1 with constants
 	for _, diff := range diffs {
 		switch diff.Type {
 		case -1:
-			lineDiff.Removed++
+			lineDiff.NumRemoved++
 		case 1:
-			lineDiff.Added++
-		case 0:
-			lineDiff.Untouched++
+			lineDiff.NumAdded++
 		}
-	}
-
-	//if added and removed == 0 the file was not edited in this commit,
-	if lineDiff.Added == 0 && lineDiff.Removed == 0 {
-		lineDiff.Untouched = 0
 	}
 
 	return lineDiff
