@@ -15,8 +15,8 @@ type Commit struct {
 	Files        map[string]*File
 	RemovedFiles map[string]*File
 	ChangedFiles map[string]*File
-	NewFiles     map[string]*File
-	RenamedFiles map[string]*File
+	AddedFiles   map[string]*File
+	MovedFiles map[string]*File
 
 	Parents  map[string]*Commit
 	Children map[string]*Commit
@@ -25,7 +25,7 @@ type Commit struct {
 func (c *Commit) String() string {
 	return fmt.Sprintf("%s by %s: %q @ %v\n-> Removed: %d, Changed: %d, Added: %d, Renamed: %d",
 		c.Id, c.Developer, c.Message, c.Date,
-		len(c.RemovedFiles), len(c.ChangedFiles), len(c.NewFiles), len(c.RenamedFiles),
+		len(c.RemovedFiles), len(c.ChangedFiles), len(c.AddedFiles), len(c.MovedFiles),
 	)
 }
 

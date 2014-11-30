@@ -111,8 +111,8 @@ func (c GitConnector) createCommit(gitCommit *git.Commit) *Commit {
 		Files:        map[string]*File{},
 		ChangedFiles: map[string]*File{},
 		RemovedFiles: map[string]*File{},
-		NewFiles:     map[string]*File{},
-		RenamedFiles: map[string]*File{},
+		AddedFiles:   map[string]*File{},
+		MovedFiles:   map[string]*File{},
 		Parents:      map[string]*Commit{},
 		Children:     map[string]*Commit{},
 	}
@@ -191,10 +191,10 @@ func (c GitConnector) loadTreeDiffToCommit(commit *Commit, parentTree *git.Tree,
 				commit.ChangedFiles[filepath] = file
 			case git.DeltaAdded:
 				status = "Added"
-				commit.NewFiles[filepath] = file
+				commit.AddedFiles[filepath] = file
 			case git.DeltaRenamed:
 				status = "Renamed"
-				commit.RenamedFiles[filepath] = file
+				commit.MovedFiles[filepath] = file
 				if delta.Similarity != 100 {
 					status += "/Modified"
 					commit.ChangedFiles[filepath] = file
