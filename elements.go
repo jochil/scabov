@@ -1,6 +1,9 @@
 package analyzer
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/gyuho/goraph/graph/gs"
+)
 
 type Element interface {
 	String() string
@@ -19,7 +22,7 @@ func (parameter *Parameter) String() string {
 type Function struct {
 	Name       string
 	Parameters []Parameter
-	CFG        ControlFlowGraph
+	CFG        *gs.Graph
 }
 
 func (function *Function) String() string {

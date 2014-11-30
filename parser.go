@@ -1,10 +1,13 @@
 package analyzer
 
 import (
+	"fmt"
+	"github.com/gyuho/goraph/graph/gs"
 	"github.com/jochil/vcs"
 	"github.com/stephens2424/php"
 	"github.com/stephens2424/php/ast"
 	"log"
+	"strings"
 )
 
 //interface for encapsulating the language specific parser
@@ -14,25 +17,14 @@ type Parser interface {
 
 // struct for the php parser (implemented against Parser interface)
 type PHPParser struct {
+	nodeCounter uint
 }
 
 // parses vcs file to internal data structures (Element)
 func (parser *PHPParser) Elements(file *vcs.File) []Element {
+	parser.nodeCounter = 0
 	code := file.Content()
 
-	//TODO remove, just here for testing
-	code = `<?php
-
-function dummy($start, $end){
-
-	$sum = 0;
-	for( $i = $start; $i <= $end; $i++ ){
-		$sum += $i;
-	}
-	return $sum;
-}
-
-echo dummy(1, 3);`
 	log.Println(code)
 
 	realParser := php.NewParser(code)
@@ -45,7 +37,6 @@ echo dummy(1, 3);`
 	elements := make([]Element, 0, 1)
 
 	for _, node := range nodes {
-
 		switch node.(type) {
 
 		case ast.Class:
@@ -53,7 +44,8 @@ echo dummy(1, 3);`
 			elements = append(elements, &element)
 
 		case *ast.FunctionStmt:
-			element := parser.readFunction(node.(*ast.FunctionStmt))
+			function := node.(*ast.FunctionStmt)
+			element := parser.readFunction(function.Name, function.Body)
 			elements = append(elements, &element)
 
 		}
@@ -68,10 +60,8 @@ func (parser *PHPParser) readClass(class ast.Class) Class {
 
 	methods := make([]Function, 0, 1)
 	for _, method := range class.Methods {
-		functionElement := Function{}
-		functionElement.Name = method.Name
-
-		methods = append(methods, functionElement)
+		functionName := class.Name + "->" + method.Name
+		methods = append(methods, parser.readFunction(functionName, method.Body))
 	}
 
 	element.Methods = methods
@@ -80,36 +70,40 @@ func (parser *PHPParser) readClass(class ast.Class) Class {
 }
 
 // convert function data structure of the language specific parser to the internal data structure
-func (parser *PHPParser) readFunction(function *ast.FunctionStmt) Function {
+func (parser *PHPParser) readFunction(name string, body *ast.Block) Function {
 	element := Function{}
-	element.Name = function.Name
-	element.CFG = parser.buildCFG(function.Body)
+	element.Name = name
+	element.CFG = parser.buildCFG(body)
+	dumpCFG(name, element.CFG)
 
 	return element
 }
 
 // creating the control flow graph for a block struct from language specific parser
-func (parser *PHPParser) buildCFG(block *ast.Block) ControlFlowGraph {
-	cfg := NewControlFlowGraph()
-	parser.readBlockIntoCfg(cfg, block, nil)
-	return *cfg
+func (parser *PHPParser) buildCFG(block *ast.Block) *gs.Graph {
+	cfg := gs.NewGraph()
+	startNode := gs.NewVertex("start")
+	cfg.AddVertex(startNode)
+	parser.readBlockIntoCfg(cfg, block, []*gs.Vertex{startNode})
+	return cfg
 }
 
 // reads a block into a given control flow graph
-func (parser *PHPParser) readBlockIntoCfg(cfg *ControlFlowGraph, block *ast.Block, startNodes []*Node) []*Node {
+func (parser *PHPParser) readBlockIntoCfg(cfg *gs.Graph, block *ast.Block, startNodes []*gs.Vertex) []*gs.Vertex {
 
-	var endNodes []*Node
+	var endNodes []*gs.Vertex
 
 	for _, statement := range block.Statements {
 
 		switch t := statement.(type) {
 
 		case ast.ExpressionStmt, ast.EchoStmt:
-			endNodes = parser.readSimpleStmtIntoCfg(cfg, &statement, startNodes)
+			endNodes = parser.readSimpleStmtIntoCfg(cfg, fmt.Sprintf("%T", statement), startNodes)
 
 		case ast.ReturnStmt:
 			//return statements couldn't be followed by another node, so no endNodes will be empty
-			parser.readSimpleStmtIntoCfg(cfg, &statement, startNodes)
+			endNodes = []*gs.Vertex{}
+			parser.readSimpleStmtIntoCfg(cfg, fmt.Sprintf("%T", statement), startNodes)
 
 		case *ast.IfStmt:
 			endNodes = parser.readIfStmtIntoCfg(cfg, statement.(*ast.IfStmt), startNodes)
@@ -126,33 +120,34 @@ func (parser *PHPParser) readBlockIntoCfg(cfg *ControlFlowGraph, block *ast.Bloc
 }
 
 // reads a simple statement into a control flow graph
-func (parser *PHPParser) readSimpleStmtIntoCfg(cfg *ControlFlowGraph, statement *ast.Statement, startNodes []*Node) []*Node {
+func (parser *PHPParser) readSimpleStmtIntoCfg(cfg *gs.Graph, label string, startNodes []*gs.Vertex) []*gs.Vertex {
 
-	node := NewNode("statement")
-	cfg.Add(node)
+	node := gs.NewVertex(parser.createId(label))
+	cfg.AddVertex(node)
 
 	// connect end nodes
 	if len(startNodes) > 0 {
 		for _, parentNode := range startNodes {
-			cfg.Connect(parentNode, node)
+			cfg.Connect(parentNode, node, 1)
 		}
 	}
 
-	return []*Node{node}
+	return []*gs.Vertex{node}
 }
 
 //reads a if statement into given cfg struct
-func (parser *PHPParser) readIfStmtIntoCfg(cfg *ControlFlowGraph, ifStmt *ast.IfStmt, startNodes []*Node) []*Node {
+func (parser *PHPParser) readIfStmtIntoCfg(cfg *gs.Graph, ifStmt *ast.IfStmt, startNodes []*gs.Vertex) []*gs.Vertex {
 
-	node := NewNode("if")
-	cfg.Add(node)
+	node := gs.NewVertex(parser.createId(fmt.Sprintf("%T", ifStmt)))
 
-	endNodes := []*Node{}
+	cfg.AddVertex(node)
+
+	endNodes := []*gs.Vertex{}
 
 	// connect end nodes
 	if len(startNodes) > 0 {
 		for _, parentNode := range startNodes {
-			cfg.Connect(parentNode, node)
+			cfg.Connect(parentNode, node, 1)
 		}
 	}
 
@@ -160,7 +155,7 @@ func (parser *PHPParser) readIfStmtIntoCfg(cfg *ControlFlowGraph, ifStmt *ast.If
 	trueBranch := ifStmt.TrueBranch
 	switch ifTrueType := trueBranch.(type) {
 	case *ast.Block:
-		trueEndNodes := parser.readBlockIntoCfg(cfg, trueBranch.(*ast.Block), []*Node{node})
+		trueEndNodes := parser.readBlockIntoCfg(cfg, trueBranch.(*ast.Block), []*gs.Vertex{node})
 		endNodes = append(endNodes, trueEndNodes...)
 
 	default:
@@ -175,11 +170,11 @@ func (parser *PHPParser) readIfStmtIntoCfg(cfg *ControlFlowGraph, ifStmt *ast.If
 		endNodes = append(endNodes, node)
 
 	case *ast.Block: //else
-		falseEndNodes := parser.readBlockIntoCfg(cfg, falseBranch.(*ast.Block), []*Node{node})
+		falseEndNodes := parser.readBlockIntoCfg(cfg, falseBranch.(*ast.Block), []*gs.Vertex{node})
 		endNodes = append(endNodes, falseEndNodes...)
 
 	case *ast.IfStmt: //elseif
-		falseEndNodes := parser.readIfStmtIntoCfg(cfg, falseBranch.(*ast.IfStmt), []*Node{node})
+		falseEndNodes := parser.readIfStmtIntoCfg(cfg, falseBranch.(*ast.IfStmt), []*gs.Vertex{node})
 		endNodes = append(endNodes, falseEndNodes...)
 
 	default:
@@ -189,19 +184,9 @@ func (parser *PHPParser) readIfStmtIntoCfg(cfg *ControlFlowGraph, ifStmt *ast.If
 	return endNodes
 }
 
-//TODO remove, just here for debugging & testing
-func TestParser(repo *vcs.Repository) {
-
-	for _, commit := range repo.Commits {
-		for path, file := range commit.Files {
-			if Filter.ValidExtension(path) {
-
-				parser := PHPParser{}
-				parser.Elements(file)
-
-				return
-			}
-		}
-	}
-
+func (parser *PHPParser) createId(label string) string {
+	label = strings.Replace(label, "*", "", -1)
+	label = strings.Replace(label, "ast.", "", -1)
+	parser.nodeCounter++
+	return fmt.Sprintf("%s%d", label, parser.nodeCounter)
 }
