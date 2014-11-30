@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"github.com/jochil/vcs"
 	"github.com/sergi/go-diff/diffmatchpatch"
+	"strings"
 )
 
 type LineSumDiff struct {
-	NumAdded   uint
-	NumRemoved uint
+	NumAdded   int
+	NumRemoved int
 }
 
 func (d *LineSumDiff) Add(d2 LineSumDiff) {
@@ -36,10 +37,8 @@ func CalcLineDiffCommit(commit *vcs.Commit) LineSumDiff {
 
 	//this is the first commit in the vcs, so count all lines added
 	if len(commit.Parents) == 0 {
-		for path, file := range commit.Files {
-			if Filter.ValidExtension(path) {
-				lineSumDiff.Add(execLineDiff("", file.Content()))
-			}
+		for _, file := range commit.Files {
+			lineSumDiff.Add(execLineDiff("", file.Content()))
 		}
 	} else {
 
@@ -47,20 +46,17 @@ func CalcLineDiffCommit(commit *vcs.Commit) LineSumDiff {
 		if len(commit.Parents) > 1 {
 
 		} else {
-			//get one and only parent commit
-			var parentCommit *vcs.Commit
-			for _, parentCommit = range commit.Parents {
-				break
+			for _, file := range commit.AddedFiles {
+				lineSumDiff.Add(execLineDiff("", file.Content()))
 			}
-
-			from := ""
-			//--what is about deleted files?
-			for path, file := range commit.Files {
-				if Filter.ValidExtension(path) {
-					if parentFile := parentCommit.FileByPath(path); parentFile != nil {
-						from = parentFile.Content()
-					}
-					lineSumDiff.Add(execLineDiff(from, file.Content()))
+			for _, file := range commit.RemovedFiles {
+				lineSumDiff.Add(execLineDiff(file.Content(), ""))
+			}
+			for _, file := range commit.ChangedFiles {
+				for _, parentFile := range file.Parents {
+					lineSumDiff.Add(execLineDiff(parentFile.Content(), file.Content()))
+					//TODO how to handle multiple parent files?
+					break
 				}
 			}
 		}
@@ -69,21 +65,27 @@ func CalcLineDiffCommit(commit *vcs.Commit) LineSumDiff {
 	return lineSumDiff
 }
 
-//executes the concrete line diff based on two string
+//executes the concrete line diff based on two strings
 func execLineDiff(from string, to string) LineSumDiff {
 
 	dmp := diffmatchpatch.New()
-	diffs := dmp.DiffMain(from, to, true)
+
+	//use line mode
+	//see: https://code.google.com/p/google-diff-match-patch/wiki/LineOrWordDiffs
+	lineText1, lineText2, lineArray := dmp.DiffLinesToChars(from, to)
+	diffs := dmp.DiffMain(lineText1, lineText2, false)
+	diffs = dmp.DiffCharsToLines(diffs, lineArray)
 
 	lineDiff := LineSumDiff{0, 0}
 
-	//todo replace -1,0,1 with constants
 	for _, diff := range diffs {
+		lines := strings.Count(diff.Text, "\n")
+
 		switch diff.Type {
-		case -1:
-			lineDiff.NumRemoved++
-		case 1:
-			lineDiff.NumAdded++
+		case diffmatchpatch.DiffDelete:
+			lineDiff.NumRemoved += lines
+		case diffmatchpatch.DiffInsert:
+			lineDiff.NumAdded += lines
 		}
 	}
 
