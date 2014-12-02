@@ -23,7 +23,7 @@ func CyclomaticComplexity(cfg *gs.Graph) int {
 }
 
 func dumpCFG(name string, cfg *gs.Graph) {
-	path := "workspace/" + name
+	path := "workspace/graphs/" + name
 	cfg.ToDOTFile(path + ".dot")
 	cmd := exec.Command("dot", "-Tpng", path+".dot", "-o", path+".png")
 	err := cmd.Run()

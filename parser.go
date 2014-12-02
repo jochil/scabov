@@ -17,15 +17,11 @@ type Parser interface {
 
 // struct for the php parser (implemented against Parser interface)
 type PHPParser struct {
-	nodeCounter uint
 }
 
 // parses vcs file to internal data structures (Element)
 func (parser *PHPParser) Elements(file *vcs.File) []Element {
-	parser.nodeCounter = 0
 	code := file.Content()
-
-	log.Println(code)
 
 	realParser := php.NewParser(code)
 	nodes, err := realParser.Parse()
@@ -81,8 +77,16 @@ func (parser *PHPParser) readFunction(name string, body *ast.Block) Function {
 // creating the control flow graph for a block struct from language specific parser
 func (parser *PHPParser) buildCFG(block *ast.Block) *gs.Graph {
 	cfg := gs.NewGraph()
+	endNodes := parser.readBlockIntoCfg(cfg, block, []*gs.Vertex{cfg.CreateAndAddToGraph("start")})
 
-	parser.readBlockIntoCfg(cfg, block, []*gs.Vertex{cfg.CreateAndAddToGraph("start")})
+	//add final return statement if missing
+	exitNode := cfg.CreateAndAddToGraph(parser.createId("return", cfg))
+	for _, endNode := range endNodes {
+		if strings.HasSuffix(endNode.ID, "return") == false {
+			cfg.Connect(endNode, exitNode, 1)
+		}
+	}
+
 	return cfg
 }
 
@@ -91,20 +95,38 @@ func (parser *PHPParser) readBlockIntoCfg(cfg *gs.Graph, block *ast.Block, start
 
 	var endNodes []*gs.Vertex
 
+
+
 	for _, statement := range block.Statements {
 
 		switch t := statement.(type) {
 
-		case ast.ExpressionStmt, ast.EchoStmt:
+		case ast.ExpressionStmt, ast.EchoStmt, ast.BreakStmt:
 			endNodes = parser.readSimpleStmtIntoCfg(cfg, fmt.Sprintf("%T", statement), startNodes)
 
-		case ast.ReturnStmt:
+		case ast.ReturnStmt, ast.ThrowStmt:
 			//return statements couldn't be followed by another node, so no endNodes will be empty
 			endNodes = []*gs.Vertex{}
 			parser.readSimpleStmtIntoCfg(cfg, fmt.Sprintf("%T", statement), startNodes)
 
 		case *ast.IfStmt:
 			endNodes = parser.readIfStmtIntoCfg(cfg, statement.(*ast.IfStmt), startNodes)
+
+		case *ast.SwitchStmt:
+			endNodes = parser.readSwitchStmtIntoCfg(cfg, statement.(*ast.SwitchStmt), startNodes)
+
+		case ast.SwitchStmt:
+			switchStatement := statement.(ast.SwitchStmt)
+			endNodes = parser.readSwitchStmtIntoCfg(cfg, &switchStatement, startNodes)
+
+		case *ast.ForeachStmt:
+			endNodes = parser.readLoopIntoCfg(cfg, fmt.Sprintf("%T", statement), statement.(*ast.ForeachStmt).LoopBlock.(*ast.Block), startNodes)
+
+		case *ast.ForStmt:
+			endNodes = parser.readLoopIntoCfg(cfg, fmt.Sprintf("%T", statement), statement.(*ast.ForStmt).LoopBlock.(*ast.Block), startNodes)
+
+		case *ast.WhileStmt:
+			endNodes = parser.readLoopIntoCfg(cfg, fmt.Sprintf("%T", statement), statement.(*ast.WhileStmt).LoopBlock.(*ast.Block), startNodes)
 
 		default:
 			log.Fatalf("Unhandled type %T", t)
@@ -117,10 +139,35 @@ func (parser *PHPParser) readBlockIntoCfg(cfg *gs.Graph, block *ast.Block, start
 	return endNodes
 }
 
+func (parser *PHPParser) readLoopIntoCfg(cfg *gs.Graph, label string, block *ast.Block, startNodes []*gs.Vertex) []*gs.Vertex {
+
+	id := parser.createId(label, cfg)
+	headNode := cfg.CreateAndAddToGraph(id)
+
+	// connect end nodes
+	if len(startNodes) > 0 {
+		for _, parentNode := range startNodes {
+			cfg.Connect(parentNode, headNode, 1)
+		}
+	}
+
+	endNodes := parser.readBlockIntoCfg(cfg, block, []*gs.Vertex{headNode})
+	footNode := cfg.CreateAndAddToGraph(id + "_end")
+	cfg.Connect(footNode, headNode, 1)
+
+	if len(endNodes) > 0 {
+		for _, endNode := range endNodes {
+			cfg.Connect(endNode, footNode, 1)
+		}
+	}
+
+	return []*gs.Vertex{headNode}
+}
+
 // reads a simple statement into a control flow graph
 func (parser *PHPParser) readSimpleStmtIntoCfg(cfg *gs.Graph, label string, startNodes []*gs.Vertex) []*gs.Vertex {
 
-	node := cfg.CreateAndAddToGraph(parser.createId(label))
+	node := cfg.CreateAndAddToGraph(parser.createId(label, cfg))
 
 	// connect end nodes
 	if len(startNodes) > 0 {
@@ -132,10 +179,70 @@ func (parser *PHPParser) readSimpleStmtIntoCfg(cfg *gs.Graph, label string, star
 	return []*gs.Vertex{node}
 }
 
+
+func (parser *PHPParser) readSwitchStmtIntoCfg(cfg *gs.Graph, switchStmt *ast.SwitchStmt, startNodes []*gs.Vertex) []*gs.Vertex {
+	node := cfg.CreateAndAddToGraph(parser.createId("switch", cfg))
+
+	endNodes := []*gs.Vertex{}
+	// connect end nodes
+	if len(startNodes) > 0 {
+		for _, parentNode := range startNodes {
+			cfg.Connect(parentNode, node, 1)
+		}
+	}
+
+	openNodes := []*gs.Vertex{}
+
+	//handle switch case
+	for _, switchCase := range switchStmt.Cases {
+		caseNode := cfg.CreateAndAddToGraph(parser.createId("case", cfg));
+		cfg.Connect(node, caseNode, 1)
+
+		if len(openNodes) > 0 {
+			for _, openNode := range openNodes {
+				cfg.Connect(openNode, caseNode, 1)
+			}
+			openNodes = []*gs.Vertex{}
+		}
+
+		caseNodes := parser.readBlockIntoCfg(cfg, &switchCase.Block, []*gs.Vertex{caseNode})
+		//for an empty switch-case
+		if len(caseNodes) == 0 {
+			openNodes = append(openNodes, caseNode)
+		}
+
+		for _, caseNode := range caseNodes {
+			if strings.HasSuffix(caseNode.ID, "break") == false {
+				openNodes = append(openNodes, caseNode)
+			}else {
+				endNodes = append(endNodes, caseNode)
+			}
+		}
+
+	}
+
+	if switchStmt.DefaultCase != nil {
+		//handle default case
+		defaultNode := cfg.CreateAndAddToGraph(parser.createId("default", cfg));
+		cfg.Connect(node, defaultNode, 1)
+		if len(openNodes) > 0 {
+			for _, openNode := range openNodes {
+				cfg.Connect(openNode, defaultNode, 1)
+			}
+			openNodes = []*gs.Vertex{}
+		}
+		defaultCaseNode := parser.readBlockIntoCfg(cfg, switchStmt.DefaultCase, []*gs.Vertex{defaultNode})
+
+		endNodes = append(endNodes, defaultCaseNode...)
+	}
+
+	return endNodes
+}
+
 //reads a if statement into given cfg struct
 func (parser *PHPParser) readIfStmtIntoCfg(cfg *gs.Graph, ifStmt *ast.IfStmt, startNodes []*gs.Vertex) []*gs.Vertex {
 
-	node := cfg.CreateAndAddToGraph(parser.createId(fmt.Sprintf("%T", ifStmt)))
+	node := cfg.CreateAndAddToGraph(parser.createId("if", cfg))
 	endNodes := []*gs.Vertex{}
 
 	// connect end nodes
@@ -178,9 +285,10 @@ func (parser *PHPParser) readIfStmtIntoCfg(cfg *gs.Graph, ifStmt *ast.IfStmt, st
 	return endNodes
 }
 
-func (parser *PHPParser) createId(label string) string {
+func (parser *PHPParser) createId(label string, cfg *gs.Graph) string {
+	label = strings.ToLower(label)
 	label = strings.Replace(label, "*", "", -1)
 	label = strings.Replace(label, "ast.", "", -1)
-	parser.nodeCounter++
-	return fmt.Sprintf("%s%d", label, parser.nodeCounter)
+	label = strings.Replace(label, "stmt", "", -1)
+	return fmt.Sprintf("n%d_%s", cfg.GetEdgesSize()+1, label)
 }
