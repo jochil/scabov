@@ -1,7 +1,7 @@
 package vcs
 
 import (
-	git "github.com/jochil/git2go"
+	git "github.com/libgit2/git2go"
 	"log"
 	"os"
 	"path"
