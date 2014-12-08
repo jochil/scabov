@@ -12,6 +12,7 @@ const (
 
 type LanguageFilter interface {
 	ValidExtension(path string) bool
+	Lang() string
 }
 
 func NewLanguageFilter(lang string) LanguageFilter {
@@ -36,6 +37,10 @@ func (filter PassThroughFilter) ValidExtension(path string) bool {
 	return true
 }
 
+func (filter PassThroughFilter) Lang() string {
+	return ""
+}
+
 // PHP filter
 type PHPFilter struct {
 }
@@ -53,4 +58,8 @@ func (filter PHPFilter) ValidExtension(path string) bool {
 		}
 	}
 	return false
+}
+
+func (filter PHPFilter) Lang() string {
+	return PHP
 }
