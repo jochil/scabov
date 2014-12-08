@@ -41,4 +41,15 @@ func main() {
 	for _, dev := range repo.Developers {
 		log.Println(data.NewDevData(dev))
 	}
+
+	/*log.Println("-------------")
+	testCommit := repo.Commits["9683bb1198833ffdb7d523702f7adc2b052969f5"]
+
+	parser := analyzer.NewParser()
+	for _, file := range testCommit.Files {
+
+		parser.Elements(file)
+	}
+	*/
+
 }
