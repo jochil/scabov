@@ -6,30 +6,48 @@ import (
 	"github.com/jochil/vcs"
 	"github.com/stephens2424/php"
 	"github.com/stephens2424/php/ast"
+	"github.com/stephens2424/php/lexer"
+	"github.com/stephens2424/php/token"
 	"log"
 	"strings"
 )
 
 //interface for encapsulating the language specific parser
 type Parser interface {
-	Elements(file vcs.File) []Element
+	Elements(file *vcs.File) []Element
+	UpdateLanguageUsage(langUsage LanguageUsage, file *vcs.File)
+}
+
+func NewParser() Parser {
+	if Filter.Lang() == vcs.PHP {
+		return &PHPParser{}
+	}
+	return nil
 }
 
 // struct for the php parser (implemented against Parser interface)
 type PHPParser struct {
 }
 
-// parses vcs file to internal data structures (Element)
-func (parser *PHPParser) Elements(file *vcs.File) []Element {
+//TODO add to interface
+func (parser *PHPParser) UpdateLanguageUsage(langUsage LanguageUsage, file *vcs.File) {
 	code := file.Content()
 
-	realParser := php.NewParser(code)
-	nodes, err := realParser.Parse()
-
-	if err != nil {
-		log.Fatal(err)
+	lex := lexer.NewLexer(code)
+	for {
+		if item := lex.Next(); item.Typ == token.EOF {
+			break
+		} else {
+			langUsage.(*PHPLanguageUsage).AddItem(item)
+		}
 	}
 
+}
+
+// parses vcs file to internal data structures (Element)
+func (parser *PHPParser) Elements(file *vcs.File) []Element {
+
+	nodes := parser.parseFile(file)
 	elements := make([]Element, 0, 1)
 
 	for _, node := range nodes {
@@ -47,6 +65,18 @@ func (parser *PHPParser) Elements(file *vcs.File) []Element {
 		}
 	}
 	return elements
+}
+
+func (parser *PHPParser) parseFile(file *vcs.File) []ast.Node {
+	code := file.Content()
+
+	realParser := php.NewParser(code)
+	nodes, err := realParser.Parse()
+
+	if err != nil {
+		log.Fatal(err)
+	}
+	return nodes
 }
 
 // convert class data structure of the language specific parser to the internal data structure
@@ -94,8 +124,6 @@ func (parser *PHPParser) buildCFG(block *ast.Block) *gs.Graph {
 func (parser *PHPParser) readBlockIntoCfg(cfg *gs.Graph, block *ast.Block, startNodes []*gs.Vertex) []*gs.Vertex {
 
 	var endNodes []*gs.Vertex
-
-
 
 	for _, statement := range block.Statements {
 
@@ -179,7 +207,6 @@ func (parser *PHPParser) readSimpleStmtIntoCfg(cfg *gs.Graph, label string, star
 	return []*gs.Vertex{node}
 }
 
-
 func (parser *PHPParser) readSwitchStmtIntoCfg(cfg *gs.Graph, switchStmt *ast.SwitchStmt, startNodes []*gs.Vertex) []*gs.Vertex {
 	node := cfg.CreateAndAddToGraph(parser.createId("switch", cfg))
 
@@ -195,7 +222,7 @@ func (parser *PHPParser) readSwitchStmtIntoCfg(cfg *gs.Graph, switchStmt *ast.Sw
 
 	//handle switch case
 	for _, switchCase := range switchStmt.Cases {
-		caseNode := cfg.CreateAndAddToGraph(parser.createId("case", cfg));
+		caseNode := cfg.CreateAndAddToGraph(parser.createId("case", cfg))
 		cfg.Connect(node, caseNode, 1)
 
 		if len(openNodes) > 0 {
@@ -214,7 +241,7 @@ func (parser *PHPParser) readSwitchStmtIntoCfg(cfg *gs.Graph, switchStmt *ast.Sw
 		for _, caseNode := range caseNodes {
 			if strings.HasSuffix(caseNode.ID, "break") == false {
 				openNodes = append(openNodes, caseNode)
-			}else {
+			} else {
 				endNodes = append(endNodes, caseNode)
 			}
 		}
@@ -223,7 +250,7 @@ func (parser *PHPParser) readSwitchStmtIntoCfg(cfg *gs.Graph, switchStmt *ast.Sw
 
 	if switchStmt.DefaultCase != nil {
 		//handle default case
-		defaultNode := cfg.CreateAndAddToGraph(parser.createId("default", cfg));
+		defaultNode := cfg.CreateAndAddToGraph(parser.createId("default", cfg))
 		cfg.Connect(node, defaultNode, 1)
 		if len(openNodes) > 0 {
 			for _, openNode := range openNodes {
