@@ -1,8 +1,6 @@
 package classifier
 
-import (
-	"math"
-)
+import "math"
 
 /*
 	TODO document formula
@@ -35,7 +33,8 @@ func QCorrelationCoefficient(rawMatrix map[string]map[string]float64) map[string
 			}
 			denominator := math.Sqrt(sum_k * sum_l)
 
-			result[k_name][l_name] = numerator / denominator
+			//*-1 to make it compatible with merge algorithms
+			result[k_name][l_name] = (numerator / denominator) * -1
 		}
 
 	}
@@ -48,4 +47,24 @@ func calcPropsAvg(props map[string]float64) float64 {
 		sum += value
 	}
 	return sum / float64(len(props))
+}
+
+func SquaredEuclideanDistance(rawMatrix map[string]map[string]float64) map[string]map[string]float64 {
+	result := map[string]map[string]float64{}
+
+	for k_name, k_props := range rawMatrix {
+		result[k_name] = map[string]float64{}
+		for l_name, l_props := range rawMatrix {
+			sum := 0.0
+			for key, _ := range l_props {
+				k_prop := (k_props[key])
+				l_prop := (l_props[key])
+				sum += math.Pow(k_prop-l_prop, 2)
+			}
+			result[k_name][l_name] = sum
+		}
+
+	}
+
+	return result
 }
