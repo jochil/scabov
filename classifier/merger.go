@@ -39,7 +39,12 @@ func (g *Group) MinProximity() (*Group, float64) {
 	return nearestGroup, minProximity
 }
 
-func SingleLinkage(groups []*Group) []*Group {
+const (
+	completeLinkageMode = iota
+	singleLinkageMode   = iota
+)
+
+func Linkage(groups []*Group, mode int) []*Group {
 
 	//get the two groups with the smallest proximity
 	var minProximity float64
@@ -67,7 +72,14 @@ func SingleLinkage(groups []*Group) []*Group {
 
 			proximityA := group.Proximites[groupA]
 			proximityB := group.Proximites[groupB]
-			newProximity := math.Min(proximityA, proximityB)
+
+			var newProximity float64
+			switch mode {
+			case singleLinkageMode:
+				newProximity = math.Min(proximityA, proximityB)
+			case completeLinkageMode:
+				newProximity = math.Max(proximityA, proximityB)
+			}
 
 			group.Proximites[groupA] = newProximity
 			groupA.Proximites[group] = newProximity
@@ -85,7 +97,7 @@ func Merge(matrix map[string]map[string]float64) {
 	groups := convertToGroups(matrix)
 
 	for len(groups) > 1 {
-		groups = SingleLinkage(groups)
+		groups = Linkage(groups, completeLinkageMode)
 		log.Println(groups)
 	}
 
