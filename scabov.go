@@ -54,7 +54,7 @@ func main() {
 	log.Printf("Saved results to %s", *outputFilename)
 	export.SaveFile(outputFile)
 
-	log.Println("finsihed")
+	log.Println("Finsihed")
 }
 
 func executeClassification(repo *vcs.Repository) {
@@ -77,13 +77,15 @@ func executeClassification(repo *vcs.Repository) {
 		}
 
 	}
-	log.Println("\tcreated raw data matrix")
+	log.Println("\t created raw data matrix:")
+	export.PrintMatrix(rawMatrix)
 
 	matrix := classifier.QCorrelationCoefficient(rawMatrix)
-	log.Println("\tscalculated distance matrix")
+	log.Println("\t calculated distance matrix:")
+	export.PrintMatrix(matrix)
 
 	groups := classifier.Merge(matrix)
-	log.Printf("\tfinished classification, found %d groups within %d devs", len(groups), len(rawMatrix))
+	log.Printf("\t finished classification, found %d groups within %d devs", len(groups), len(rawMatrix))
 
 	export.SaveClassificationResult(groups, rawMatrix)
 }
