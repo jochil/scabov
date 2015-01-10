@@ -160,6 +160,9 @@ func Merge(matrix map[string]map[string]float64) []*Group {
 	}
 
 	clusterCount := testMojena(steps)
+	if clusterCount == 0 {
+		return nil
+	}
 	return steps[clusterCount].groups
 }
 

@@ -10,18 +10,52 @@ import (
 type CycloDiff struct {
 	Increased int
 	Decreased int
+	New       []int
 }
 
 func (diff *CycloDiff) IsEmpty() bool {
-	return diff.Increased == 0 && diff.Decreased == 0
+	return diff.Increased == 0 && diff.Decreased == 0 && len(diff.New) == 0
+}
+
+func (diff *CycloDiff) Sum() int {
+	sum := 0
+	for _, value := range diff.New {
+		sum += value
+	}
+	return sum
+}
+
+func (diff *CycloDiff) Avg() float64 {
+	return float64(diff.Sum()) / float64(len(diff.New))
+}
+
+func (diff *CycloDiff) Max() int {
+	max := 0
+	for _, value := range diff.New {
+		if value > max {
+			max = value
+		}
+	}
+	return max
 }
 
 func CalcCycloDiff(dev *vcs.Developer) CycloDiff {
 
 	parser := NewParser()
 
-	cycloDiff := CycloDiff{0, 0}
+	cycloDiff := CycloDiff{0, 0, []int{}}
 
+	//handle added files
+	for _, file := range dev.AddedFiles() {
+		functions := parser.Functions(file)
+
+		for _, function := range functions {
+			cyclo := CyclomaticComplexity(function.CFG)
+			cycloDiff.New = append(cycloDiff.New, cyclo)
+		}
+	}
+
+	//handle modified files
 	for _, file := range dev.ModifiedFiles() {
 
 		//TODO just handle one parent file, get this working for n-parents
@@ -30,10 +64,11 @@ func CalcCycloDiff(dev *vcs.Developer) CycloDiff {
 			functions := parser.Functions(file)
 			parentFunctions := parser.Functions(parentFile)
 
-			for parentName, parentFunction := range parentFunctions {
+			for name, function := range parentFunctions {
 
-				if function, ok := functions[parentName]; ok {
-					newCyclo := CyclomaticComplexity(function.CFG)
+				newCyclo := CyclomaticComplexity(function.CFG)
+
+				if parentFunction, ok := functions[name]; ok {
 					oldCyclo := CyclomaticComplexity(parentFunction.CFG)
 
 					if oldCyclo > newCyclo {
@@ -41,6 +76,9 @@ func CalcCycloDiff(dev *vcs.Developer) CycloDiff {
 					} else if oldCyclo < newCyclo {
 						cycloDiff.Increased++
 					}
+
+				} else {
+					cycloDiff.New = append(cycloDiff.New, newCyclo)
 				}
 			}
 		}
