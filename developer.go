@@ -26,6 +26,16 @@ func (dev *Developer) FirstCommit() *Commit {
 	return firstCommit
 }
 
+func (dev *Developer) ModifiedFiles() []*File {
+	files := []*File{}
+	for _, commit := range dev.Commits {
+		for _, file := range commit.ChangedFiles {
+			files = append(files, file)
+		}
+	}
+	return files
+}
+
 func (dev *Developer) LineDiff() *LineDiff {
 
 	diff := &LineDiff{0, 0}
@@ -37,7 +47,7 @@ func (dev *Developer) LineDiff() *LineDiff {
 
 func (dev *Developer) FileDiff() *FileDiff {
 
-	diff := &FileDiff{0, 0,0}
+	diff := &FileDiff{0, 0, 0}
 	for _, commit := range dev.Commits {
 		diff.Added += len(commit.AddedFiles)
 		diff.Removed += len(commit.RemovedFiles)

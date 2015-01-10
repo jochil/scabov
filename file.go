@@ -3,14 +3,18 @@ package vcs
 import (
 	"fmt"
 	"io/ioutil"
-	"os"
 	"log"
+	"os"
 )
 
 type FileDiff struct {
 	Added   int
 	Removed int
 	Changed int
+}
+
+func (diff *FileDiff) IsEmpty() bool {
+	return diff.Added == 0 && diff.Removed == 0 && diff.Changed == 0
 }
 
 type File struct {
