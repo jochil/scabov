@@ -36,6 +36,16 @@ func (dev *Developer) ModifiedFiles() []*File {
 	return files
 }
 
+func (dev *Developer) AddedFiles() []*File {
+	files := []*File{}
+	for _, commit := range dev.Commits {
+		for _, file := range commit.AddedFiles {
+			files = append(files, file)
+		}
+	}
+	return files
+}
+
 func (dev *Developer) LineDiff() *LineDiff {
 
 	diff := &LineDiff{0, 0}
