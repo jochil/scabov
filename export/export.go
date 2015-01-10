@@ -8,8 +8,8 @@ import (
 )
 
 type xmlRoot struct {
-	XMLName        xml.Name          `xml:"result"`
-	Classification xmlClassification `xml:"classification"`
+	XMLName        xml.Name            `xml:"result"`
+	Classification []xmlClassification `xml:"classifications>classification"`
 }
 
 var root xmlRoot = xmlRoot{}

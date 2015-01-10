@@ -13,8 +13,10 @@ type xmlDev struct {
 	FilesAdded     int      `xml:"files>added"`
 	FilesRemoved   int      `xml:"files>removed"`
 	FilesChanged   int      `xml:"files>changed"`
-	CylcoIncreased int      `xml:"cyclo>increased"`
-	CylcoDecreased int      `xml:"cyclo>decreased"`
+	CycloIncreased int      `xml:"cyclo>increased"`
+	CycloDecreased int      `xml:"cyclo>decreased"`
+	CycloAvg       int      `xml:"cyclo>avg"`
+	CycloMax       int      `xml:"cyclo>max"`
 }
 
 type xmlGroup struct {
@@ -24,12 +26,13 @@ type xmlGroup struct {
 
 type xmlClassification struct {
 	XMLName xml.Name   `xml:"classification"`
+	Id      string     `xml:"id,attr"`
 	Groups  []xmlGroup `xml:"groups"`
 }
 
-func SaveClassificationResult(groups []*classifier.Group, rawMatrix map[string]map[string]float64) {
+func SaveClassificationResult(id string, groups []*classifier.Group, rawMatrix map[string]map[string]float64) {
 
-	xmlClassification := xmlClassification{}
+	xmlClassification := xmlClassification{Id: id}
 
 	//create xml structure
 	for _, group := range groups {
@@ -44,13 +47,15 @@ func SaveClassificationResult(groups []*classifier.Group, rawMatrix map[string]m
 				FilesAdded:     int(devData["files_added"]),
 				FilesRemoved:   int(devData["files_removed"]),
 				FilesChanged:   int(devData["files_changed"]),
-				CylcoIncreased: int(devData["cyclo_increased"]),
-				CylcoDecreased: int(devData["cyclo_decreased"]),
+				CycloIncreased: int(devData["cyclo_increased"]),
+				CycloDecreased: int(devData["cyclo_decreased"]),
+				CycloAvg:       int(devData["cyclo_avg"]),
+				CycloMax:       int(devData["cyclo_max"]),
 			}
 			xmlGroup.Devs = append(xmlGroup.Devs, dev)
 		}
 		xmlClassification.Groups = append(xmlClassification.Groups, xmlGroup)
 	}
 
-	root.Classification = xmlClassification
+	root.Classification = append(root.Classification, xmlClassification)
 }

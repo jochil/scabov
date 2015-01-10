@@ -61,7 +61,9 @@ func executeClassification(repo *vcs.Repository) {
 	log.Println("start classification")
 
 	//create raw data matrix
-	rawMatrix := map[string]map[string]float64{}
+	contributionRawMatrix := map[string]map[string]float64{}
+	styleRawMatrix := map[string]map[string]float64{}
+
 	for _, dev := range repo.Developers {
 
 		cycloDiff := analyzer.CalcCycloDiff(dev)
@@ -70,10 +72,15 @@ func executeClassification(repo *vcs.Repository) {
 
 		//remove dev without any contribution
 		if cycloDiff.IsEmpty() && fileDiff.IsEmpty() && lineDiff.IsEmpty() {
-			continue;
+			continue
 		}
 
-		rawMatrix[dev.Id] = map[string]float64{
+		styleRawMatrix[dev.Id] = map[string]float64{
+			"cyclo_avg": cycloDiff.Avg(),
+			"cyclo_max": float64(cycloDiff.Max()),
+		}
+
+		contributionRawMatrix[dev.Id] = map[string]float64{
 			"files_added":     float64(fileDiff.Added),
 			"files_removed":   float64(fileDiff.Removed),
 			"files_changed":   float64(fileDiff.Changed),
@@ -84,15 +91,21 @@ func executeClassification(repo *vcs.Repository) {
 		}
 
 	}
-	log.Println("\t created raw data matrix")
-	//export.PrintMatrix(rawMatrix)
+	log.Println("\t created raw data matrices")
+	//export.PrintMatrix(styleRawMatrix)
+	//export.PrintMatrix(contributionRawMatrix)
 
-	matrix := classifier.QCorrelationCoefficient(rawMatrix)
-	log.Println("\t calculated distance matrix")
-	//export.PrintMatrix(matrix)
+	contributionMatrix := classifier.QCorrelationCoefficient(contributionRawMatrix)
+	styleMatrix := classifier.QCorrelationCoefficient(styleRawMatrix)
 
-	groups := classifier.Merge(matrix)
-	log.Printf("\t finished classification, found %d groups within %d active devs", len(groups), len(rawMatrix))
+	log.Println("\t calculated distance matrices")
+	//export.PrintMatrix(styleMatrix)
 
-	export.SaveClassificationResult(groups, rawMatrix)
+	contributionGroups := classifier.Merge(contributionMatrix)
+	styleGroups := classifier.Merge(styleMatrix)
+	log.Printf("\t finished classification, found %d style and %d contribution groups within %d active devs",
+		len(styleGroups), len(contributionGroups), len(contributionRawMatrix))
+
+	export.SaveClassificationResult("contribution", contributionGroups, contributionRawMatrix)
+	export.SaveClassificationResult("style", styleGroups, styleRawMatrix)
 }
