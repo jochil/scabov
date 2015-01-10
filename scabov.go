@@ -64,25 +64,35 @@ func executeClassification(repo *vcs.Repository) {
 	rawMatrix := map[string]map[string]float64{}
 	for _, dev := range repo.Developers {
 
+		cycloDiff := analyzer.CalcCycloDiff(dev)
+		fileDiff := dev.FileDiff()
+		lineDiff := dev.LineDiff()
+
+		//remove dev without any contribution
+		if cycloDiff.IsEmpty() && fileDiff.IsEmpty() && lineDiff.IsEmpty() {
+			continue;
+		}
+
 		rawMatrix[dev.Id] = map[string]float64{
-			"files_added":   float64(dev.FileDiff().Added),
-			"files_removed": float64(dev.FileDiff().Removed),
-			"files_changed": float64(dev.FileDiff().Changed),
-			"lines_added":   float64(dev.LineDiff().Added),
-			"lines_removed": float64(dev.LineDiff().Removed),
-			//"elements_used": float64(devData.LanguageUsage.NumUsedElements()),
+			"files_added":     float64(fileDiff.Added),
+			"files_removed":   float64(fileDiff.Removed),
+			"files_changed":   float64(fileDiff.Changed),
+			"lines_added":     float64(lineDiff.Added),
+			"lines_removed":   float64(lineDiff.Removed),
+			"cyclo_increased": float64(cycloDiff.Increased),
+			"cyclo_decreased": float64(cycloDiff.Decreased),
 		}
 
 	}
-	log.Println("\t created raw data matrix:")
-	export.PrintMatrix(rawMatrix)
+	log.Println("\t created raw data matrix")
+	//export.PrintMatrix(rawMatrix)
 
 	matrix := classifier.QCorrelationCoefficient(rawMatrix)
-	log.Println("\t calculated distance matrix:")
-	export.PrintMatrix(matrix)
+	log.Println("\t calculated distance matrix")
+	//export.PrintMatrix(matrix)
 
 	groups := classifier.Merge(matrix)
-	log.Printf("\t finished classification, found %d groups within %d devs", len(groups), len(rawMatrix))
+	log.Printf("\t finished classification, found %d groups within %d active devs", len(groups), len(rawMatrix))
 
 	export.SaveClassificationResult(groups, rawMatrix)
 }
