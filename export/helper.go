@@ -55,8 +55,15 @@ func fillColumn(content string, columnSize int) string {
 
 	out := content
 	offset := columnSize - len(content)
-	for i := 0; i <= offset; i++ {
-		out += " "
+
+	if offset < 0 {
+		//cut end
+		out = content[0:columnSize-3] + "... "
+	} else {
+		//fill with spaces
+		for i := 0; i <= offset; i++ {
+			out += " "
+		}
 	}
 
 	return out
