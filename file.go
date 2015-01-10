@@ -3,19 +3,14 @@ package vcs
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
+	"log"
 )
 
-// stores file to local path
-func storeFile(path string, content []byte) {
-
-	if _, err := os.Stat(path); err != nil {
-		var perm os.FileMode = 0600
-		if err := ioutil.WriteFile(path, content, perm); err != nil {
-			log.Fatalln(err)
-		}
-	}
+type FileDiff struct {
+	Added   int
+	Removed int
+	Changed int
 }
 
 type File struct {
@@ -36,5 +31,16 @@ func (f *File) Content() string {
 		panic(err)
 	} else {
 		return string(content[:])
+	}
+}
+
+// stores file to local path
+func storeFile(path string, content []byte) {
+
+	if _, err := os.Stat(path); err != nil {
+		var perm os.FileMode = 0600
+		if err := ioutil.WriteFile(path, content, perm); err != nil {
+			log.Fatalln(err)
+		}
 	}
 }

@@ -18,6 +18,8 @@ type Commit struct {
 	AddedFiles   map[string]*File
 	MovedFiles   map[string]*File
 
+	LineDiff LineDiff
+
 	Parents  map[string]*Commit
 	Children map[string]*Commit
 }

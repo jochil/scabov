@@ -26,6 +26,27 @@ func (dev *Developer) FirstCommit() *Commit {
 	return firstCommit
 }
 
+func (dev *Developer) LineDiff() *LineDiff {
+
+	diff := &LineDiff{0, 0}
+	for _, commit := range dev.Commits {
+		diff.Add(commit.LineDiff)
+	}
+	return diff
+}
+
+func (dev *Developer) FileDiff() *FileDiff {
+
+	diff := &FileDiff{0, 0,0}
+	for _, commit := range dev.Commits {
+		diff.Added += len(commit.AddedFiles)
+		diff.Removed += len(commit.RemovedFiles)
+		diff.Changed += len(commit.ChangedFiles)
+		diff.Changed += len(commit.MovedFiles)
+	}
+	return diff
+}
+
 func (dev *Developer) String() string {
 	return fmt.Sprintf("%s (%s)", dev.Name, dev.Email)
 }

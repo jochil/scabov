@@ -114,6 +114,7 @@ func (c GitConnector) createCommit(gitCommit *git.Commit) *Commit {
 		AddedFiles:   map[string]*File{},
 		MovedFiles:   map[string]*File{},
 		Parents:      map[string]*Commit{},
+		LineDiff:     LineDiff{0, 0},
 		Children:     map[string]*Commit{},
 	}
 
@@ -158,7 +159,6 @@ func (c GitConnector) loadTreeDiffToCommit(commit *Commit, parentTree *git.Tree,
 	}
 
 	findOpts, _ := git.DefaultDiffFindOptions()
-	findOpts.Flags += git.DiffFindAll
 	diff.FindSimilar(&findOpts)
 	err = diff.ForEach((git.DiffForEachFileCallback)(func(delta git.DiffDelta, progress float64) (git.DiffForEachHunkCallback, error) {
 		if Filter.ValidExtension(delta.NewFile.Path) {
@@ -220,6 +220,13 @@ func (c GitConnector) loadTreeDiffToCommit(commit *Commit, parentTree *git.Tree,
 
 		return func(hunk git.DiffHunk) (git.DiffForEachLineCallback, error) {
 			return func(line git.DiffLine) error {
+
+				if line.Origin == git.DiffLineAddition {
+					commit.LineDiff.Added++
+				} else if line.Origin == git.DiffLineDeletion {
+					commit.LineDiff.Removed++
+				}
+
 				return nil
 			}, nil
 		}, nil
