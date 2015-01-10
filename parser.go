@@ -15,6 +15,7 @@ import (
 //interface for encapsulating the language specific parser
 type Parser interface {
 	Elements(file *vcs.File) []Element
+	Functions(file *vcs.File) map[string]Function
 	UpdateLanguageUsage(langUsage LanguageUsage, file *vcs.File)
 }
 
@@ -44,6 +45,30 @@ func (parser *PHPParser) UpdateLanguageUsage(langUsage LanguageUsage, file *vcs.
 
 }
 
+//TODO remove redundant code (see Elements())
+func (parser *PHPParser) Functions(file *vcs.File) map[string]Function {
+	nodes := parser.parseFile(file)
+	functions := map[string]Function{}
+
+	for _, node := range nodes {
+		switch node.(type) {
+
+		case ast.Class, *ast.Class:
+			element := parser.readClass(node.(*ast.Class))
+			for _, function := range element.Methods {
+				functions[function.Name] = function
+			}
+
+		case *ast.FunctionStmt:
+			function := node.(*ast.FunctionStmt)
+			element := parser.readFunction(function.Name, function.Body)
+			functions[element.Name] = element
+
+		}
+	}
+	return functions
+}
+
 // parses vcs file to internal data structures (Element)
 func (parser *PHPParser) Elements(file *vcs.File) []Element {
 
@@ -53,8 +78,8 @@ func (parser *PHPParser) Elements(file *vcs.File) []Element {
 	for _, node := range nodes {
 		switch node.(type) {
 
-		case ast.Class:
-			element := parser.readClass(node.(ast.Class))
+		case ast.Class, *ast.Class:
+			element := parser.readClass(node.(*ast.Class))
 			elements = append(elements, &element)
 
 		case *ast.FunctionStmt:
@@ -80,7 +105,7 @@ func (parser *PHPParser) parseFile(file *vcs.File) []ast.Node {
 }
 
 // convert class data structure of the language specific parser to the internal data structure
-func (parser *PHPParser) readClass(class ast.Class) Class {
+func (parser *PHPParser) readClass(class *ast.Class) Class {
 	element := Class{}
 	element.Name = class.Name
 
@@ -100,23 +125,22 @@ func (parser *PHPParser) readFunction(name string, body *ast.Block) Function {
 	element := Function{}
 	element.Name = name
 	element.CFG = parser.buildCFG(body)
-	dumpCFG(name, element.CFG)
+	//dumpCFG(name, element.CFG)
 	return element
 }
 
 // creating the control flow graph for a block struct from language specific parser
 func (parser *PHPParser) buildCFG(block *ast.Block) *gs.Graph {
 	cfg := gs.NewGraph()
-	endNodes := parser.readBlockIntoCfg(cfg, block, []*gs.Vertex{cfg.CreateAndAddToGraph("start")})
+	startNode := cfg.CreateAndAddToGraph("start")
 
-	//add final return statement if missing
-	exitNode := cfg.CreateAndAddToGraph(parser.createId("return", cfg))
+	endNodes := parser.readBlockIntoCfg(cfg, block, []*gs.Vertex{startNode})
+	exitNode := cfg.CreateAndAddToGraph("exit")
+	//connect all endNodes to the exit node
 	for _, endNode := range endNodes {
-		if strings.HasSuffix(endNode.ID, "return") == false {
-			cfg.Connect(endNode, exitNode, 1)
-		}
+		cfg.Connect(endNode, exitNode, 1)
 	}
-
+	cfg.Connect(exitNode, startNode, 1)
 	return cfg
 }
 
@@ -129,13 +153,11 @@ func (parser *PHPParser) readBlockIntoCfg(cfg *gs.Graph, block *ast.Block, start
 
 		switch t := statement.(type) {
 
-		case ast.ExpressionStmt, ast.EchoStmt, ast.BreakStmt:
+		case ast.ExpressionStmt, ast.EchoStmt, ast.BreakStmt, *ast.BreakStmt:
 			endNodes = parser.readSimpleStmtIntoCfg(cfg, fmt.Sprintf("%T", statement), startNodes)
 
-		case ast.ReturnStmt, ast.ThrowStmt:
-			//return statements couldn't be followed by another node, so no endNodes will be empty
-			endNodes = []*gs.Vertex{}
-			parser.readSimpleStmtIntoCfg(cfg, fmt.Sprintf("%T", statement), startNodes)
+		case ast.ReturnStmt, ast.ThrowStmt, *ast.ReturnStmt:
+			endNodes = parser.readSimpleStmtIntoCfg(cfg, fmt.Sprintf("%T", statement), startNodes)
 
 		case *ast.IfStmt:
 			endNodes = parser.readIfStmtIntoCfg(cfg, statement.(*ast.IfStmt), startNodes)
