@@ -55,9 +55,9 @@ func (parser *PHPParser) Functions(file *vcs.File) map[string]Function {
 
 		case ast.Class, *ast.Class:
 			element := parser.readClass(node.(*ast.Class))
-			for _, function := range element.Methods {
-				functions[function.Name] = function
-			}
+		for _, function := range element.Methods {
+			functions[function.Name] = function
+		}
 
 		case *ast.FunctionStmt:
 			function := node.(*ast.FunctionStmt)
@@ -99,7 +99,8 @@ func (parser *PHPParser) parseFile(file *vcs.File) []ast.Node {
 	nodes, err := realParser.Parse()
 
 	if err != nil {
-		log.Fatal(err)
+		//log.Fatal(err)
+		return []ast.Node{}
 	}
 	return nodes
 }
@@ -144,52 +145,73 @@ func (parser *PHPParser) buildCFG(block *ast.Block) *gs.Graph {
 	return cfg
 }
 
+func (parser *PHPParser) readStatementIntoCfg(cfg *gs.Graph, statement ast.Statement, startNodes []*gs.Vertex) []*gs.Vertex {
+
+	var endNodes []*gs.Vertex
+
+	switch t := statement.(type) {
+
+
+	case ast.Block:
+		endNodes = startNodes
+
+	case *ast.Block:
+		endNodes = parser.readBlockIntoCfg(cfg, statement.(*ast.Block), startNodes)
+
+	case ast.ExpressionStmt, ast.EchoStmt, ast.BreakStmt, *ast.BreakStmt:
+		endNodes = parser.readSimpleStmtIntoCfg(cfg, fmt.Sprintf("%T", statement), startNodes)
+
+	case ast.ReturnStmt, ast.ThrowStmt, *ast.ReturnStmt, *ast.EmptyStatement:
+		endNodes = parser.readSimpleStmtIntoCfg(cfg, fmt.Sprintf("%T", statement), startNodes)
+
+	case *ast.IfStmt:
+		endNodes = parser.readIfStmtIntoCfg(cfg, statement.(*ast.IfStmt), startNodes)
+
+	case *ast.SwitchStmt:
+		endNodes = parser.readSwitchStmtIntoCfg(cfg, statement.(*ast.SwitchStmt), startNodes)
+
+	case ast.SwitchStmt:
+		switchStatement := statement.(ast.SwitchStmt)
+		endNodes = parser.readSwitchStmtIntoCfg(cfg, &switchStatement, startNodes)
+
+	case *ast.ForeachStmt:
+		endNodes = parser.readLoopIntoCfg(cfg, fmt.Sprintf("%T", statement), statement.(*ast.ForeachStmt).LoopBlock.(ast.Statement), startNodes)
+
+	case *ast.ForStmt:
+		endNodes = parser.readLoopIntoCfg(cfg, fmt.Sprintf("%T", statement), statement.(*ast.ForStmt).LoopBlock.(ast.Statement), startNodes)
+
+	case *ast.WhileStmt:
+		endNodes = parser.readLoopIntoCfg(cfg, fmt.Sprintf("%T", statement), statement.(*ast.WhileStmt).LoopBlock.(ast.Statement), startNodes)
+
+	case *ast.TryStmt:
+		endNodes = parser.readTryCatchIntoCfg(cfg, statement.(*ast.TryStmt), startNodes)
+
+	case *ast.ContinueStmt:
+		//TODO implement
+
+	default:
+		log.Fatalf("Unhandled type %T", t)
+
+	}
+	return endNodes
+}
+
 // reads a block into a given control flow graph
 func (parser *PHPParser) readBlockIntoCfg(cfg *gs.Graph, block *ast.Block, startNodes []*gs.Vertex) []*gs.Vertex {
 
 	var endNodes []*gs.Vertex
 
-	for _, statement := range block.Statements {
+	if block != nil {
 
-		switch t := statement.(type) {
-
-		case ast.ExpressionStmt, ast.EchoStmt, ast.BreakStmt, *ast.BreakStmt:
-			endNodes = parser.readSimpleStmtIntoCfg(cfg, fmt.Sprintf("%T", statement), startNodes)
-
-		case ast.ReturnStmt, ast.ThrowStmt, *ast.ReturnStmt:
-			endNodes = parser.readSimpleStmtIntoCfg(cfg, fmt.Sprintf("%T", statement), startNodes)
-
-		case *ast.IfStmt:
-			endNodes = parser.readIfStmtIntoCfg(cfg, statement.(*ast.IfStmt), startNodes)
-
-		case *ast.SwitchStmt:
-			endNodes = parser.readSwitchStmtIntoCfg(cfg, statement.(*ast.SwitchStmt), startNodes)
-
-		case ast.SwitchStmt:
-			switchStatement := statement.(ast.SwitchStmt)
-			endNodes = parser.readSwitchStmtIntoCfg(cfg, &switchStatement, startNodes)
-
-		case *ast.ForeachStmt:
-			endNodes = parser.readLoopIntoCfg(cfg, fmt.Sprintf("%T", statement), statement.(*ast.ForeachStmt).LoopBlock.(*ast.Block), startNodes)
-
-		case *ast.ForStmt:
-			endNodes = parser.readLoopIntoCfg(cfg, fmt.Sprintf("%T", statement), statement.(*ast.ForStmt).LoopBlock.(*ast.Block), startNodes)
-
-		case *ast.WhileStmt:
-			endNodes = parser.readLoopIntoCfg(cfg, fmt.Sprintf("%T", statement), statement.(*ast.WhileStmt).LoopBlock.(*ast.Block), startNodes)
-
-		default:
-			log.Fatalf("Unhandled type %T", t)
-
+		for _, statement := range block.Statements {
+			endNodes = parser.readStatementIntoCfg(cfg, statement, startNodes)
+			startNodes = endNodes
 		}
-
-		startNodes = endNodes
 	}
-
 	return endNodes
 }
 
-func (parser *PHPParser) readLoopIntoCfg(cfg *gs.Graph, label string, block *ast.Block, startNodes []*gs.Vertex) []*gs.Vertex {
+func (parser *PHPParser) readLoopIntoCfg(cfg *gs.Graph, label string, statement ast.Statement, startNodes []*gs.Vertex) []*gs.Vertex {
 
 	id := parser.createId(label, cfg)
 	headNode := cfg.CreateAndAddToGraph(id)
@@ -201,7 +223,8 @@ func (parser *PHPParser) readLoopIntoCfg(cfg *gs.Graph, label string, block *ast
 		}
 	}
 
-	endNodes := parser.readBlockIntoCfg(cfg, block, []*gs.Vertex{headNode})
+	endNodes := parser.readStatementIntoCfg(cfg, statement, []*gs.Vertex{headNode})
+
 	footNode := cfg.CreateAndAddToGraph(id + "_end")
 	cfg.Connect(footNode, headNode, 1)
 
@@ -288,6 +311,37 @@ func (parser *PHPParser) readSwitchStmtIntoCfg(cfg *gs.Graph, switchStmt *ast.Sw
 	return endNodes
 }
 
+func (parser *PHPParser) readTryCatchIntoCfg(cfg *gs.Graph, tryStmt *ast.TryStmt, startNodes []*gs.Vertex) []*gs.Vertex {
+	node := cfg.CreateAndAddToGraph(parser.createId("if", cfg))
+	endNodes := []*gs.Vertex{}
+
+	// connect nodes
+	if len(startNodes) > 0 {
+		for _, parentNode := range startNodes {
+			cfg.Connect(parentNode, node, 1)
+		}
+	}
+
+	tryEndNodes := parser.readBlockIntoCfg(cfg, tryStmt.TryBlock, []*gs.Vertex{node})
+
+	allCatchEndNodes := []*gs.Vertex{}
+	for _, catchStmt := range tryStmt.CatchStmts {
+		catchEndNodes := parser.readBlockIntoCfg(cfg, catchStmt.CatchBlock, []*gs.Vertex{node})
+		allCatchEndNodes = append(allCatchEndNodes, catchEndNodes...)
+	}
+
+
+	endNodes = append(endNodes, tryEndNodes...)
+	endNodes = append(endNodes, allCatchEndNodes...)
+
+	if tryStmt.FinallyBlock != nil {
+		finallyEndNodes := parser.readBlockIntoCfg(cfg, tryStmt.FinallyBlock, endNodes)
+		endNodes = finallyEndNodes
+	}
+
+	return endNodes
+}
+
 //reads a if statement into given cfg struct
 func (parser *PHPParser) readIfStmtIntoCfg(cfg *gs.Graph, ifStmt *ast.IfStmt, startNodes []*gs.Vertex) []*gs.Vertex {
 
@@ -302,34 +356,11 @@ func (parser *PHPParser) readIfStmtIntoCfg(cfg *gs.Graph, ifStmt *ast.IfStmt, st
 	}
 
 	// handle true branch
-	trueBranch := ifStmt.TrueBranch
-	switch ifTrueType := trueBranch.(type) {
-	case *ast.Block:
-		trueEndNodes := parser.readBlockIntoCfg(cfg, trueBranch.(*ast.Block), []*gs.Vertex{node})
-		endNodes = append(endNodes, trueEndNodes...)
+	trueEndNodes := parser.readStatementIntoCfg(cfg, ifStmt.TrueBranch, []*gs.Vertex{node})
+	endNodes = append(endNodes, trueEndNodes...)
 
-	default:
-		log.Fatalf("invalid if branch of type %T", ifTrueType)
-	}
-
-	//handle false branch
-	falseBranch := ifStmt.FalseBranch
-	switch ifFalseType := falseBranch.(type) {
-
-	case ast.Block: //no/empty else
-		endNodes = append(endNodes, node)
-
-	case *ast.Block: //else
-		falseEndNodes := parser.readBlockIntoCfg(cfg, falseBranch.(*ast.Block), []*gs.Vertex{node})
-		endNodes = append(endNodes, falseEndNodes...)
-
-	case *ast.IfStmt: //elseif
-		falseEndNodes := parser.readIfStmtIntoCfg(cfg, falseBranch.(*ast.IfStmt), []*gs.Vertex{node})
-		endNodes = append(endNodes, falseEndNodes...)
-
-	default:
-		log.Fatalf("invalid if branch of type %T", ifFalseType)
-	}
+	falseEndNodes := parser.readStatementIntoCfg(cfg, ifStmt.FalseBranch, []*gs.Vertex{node})
+	endNodes = append(endNodes, falseEndNodes...)
 
 	return endNodes
 }
