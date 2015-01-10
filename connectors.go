@@ -220,11 +220,12 @@ func (c GitConnector) loadTreeDiffToCommit(commit *Commit, parentTree *git.Tree,
 
 		return func(hunk git.DiffHunk) (git.DiffForEachLineCallback, error) {
 			return func(line git.DiffLine) error {
-
-				if line.Origin == git.DiffLineAddition {
-					commit.LineDiff.Added++
-				} else if line.Origin == git.DiffLineDeletion {
-					commit.LineDiff.Removed++
+				if Filter.ValidExtension(delta.NewFile.Path) {
+					if line.Origin == git.DiffLineAddition {
+						commit.LineDiff.Added++
+					} else if line.Origin == git.DiffLineDeletion {
+						commit.LineDiff.Removed++
+					}
 				}
 
 				return nil
