@@ -4,7 +4,6 @@ import (
 	"flag"
 	"github.com/jochil/analyzer"
 	"github.com/jochil/analyzer/classifier"
-	"github.com/jochil/scabov/data"
 	"github.com/jochil/scabov/export"
 	"github.com/jochil/vcs"
 	"io/ioutil"
@@ -64,15 +63,13 @@ func executeClassification(repo *vcs.Repository) {
 	//create raw data matrix
 	rawMatrix := map[string]map[string]float64{}
 	for _, dev := range repo.Developers {
-		devData := data.NewDevData(dev)
 
-		rawMatrix[devData.Dev] = map[string]float64{
-			"commits": float64(devData.Commits),
-			//"files_added":   float64(devData.FileDiff.NumAdded),
-			//"files_removed": float64(devData.FileDiff.NumRemoved),
-			//"files_changed": float64(devData.FileDiff.NumChanged),
-			"lines_added":   float64(devData.LineDiff.NumAdded),
-			"lines_removed": float64(devData.LineDiff.NumRemoved),
+		rawMatrix[dev.Id] = map[string]float64{
+			"files_added":   float64(dev.FileDiff().Added),
+			"files_removed": float64(dev.FileDiff().Removed),
+			"files_changed": float64(dev.FileDiff().Changed),
+			"lines_added":   float64(dev.LineDiff().Added),
+			"lines_removed": float64(dev.LineDiff().Removed),
 			//"elements_used": float64(devData.LanguageUsage.NumUsedElements()),
 		}
 
