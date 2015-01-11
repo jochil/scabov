@@ -5,6 +5,7 @@ import (
 	"github.com/jochil/vcs"
 	"log"
 	"os/exec"
+	"math"
 )
 
 type CycloDiff struct {
@@ -26,7 +27,10 @@ func (diff *CycloDiff) Sum() int {
 }
 
 func (diff *CycloDiff) Avg() float64 {
-	return float64(diff.Sum()) / float64(len(diff.New))
+	if result := float64(diff.Sum()) / float64(len(diff.New)); math.IsNaN(result) == false {
+		return result
+	}
+	return 0
 }
 
 func (diff *CycloDiff) Max() int {
