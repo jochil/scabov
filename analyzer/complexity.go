@@ -4,38 +4,35 @@ import (
 	"github.com/gyuho/goraph/graph/gs"
 	"github.com/jochil/scabov/vcs"
 	"log"
-	"os/exec"
 	"math"
+	"os/exec"
 )
 
-type CycloDiff struct {
-	Increased int
-	Decreased int
-	New       []int
+type ComplexityDiff struct {
+	CycloIncreased int
+	CycloDecreased int
+	CycloNew       []int
+	FuncNodes      []int
 }
 
-func (diff *CycloDiff) IsEmpty() bool {
-	return diff.Increased == 0 && diff.Decreased == 0 && len(diff.New) == 0
-}
-
-func (diff *CycloDiff) Sum() int {
+func (diff *ComplexityDiff) CycloSum() int {
 	sum := 0
-	for _, value := range diff.New {
+	for _, value := range diff.CycloNew {
 		sum += value
 	}
 	return sum
 }
 
-func (diff *CycloDiff) Avg() float64 {
-	if result := float64(diff.Sum()) / float64(len(diff.New)); math.IsNaN(result) == false {
+func (diff *ComplexityDiff) CycloAvg() float64 {
+	if result := float64(diff.CycloSum()) / float64(len(diff.CycloNew)); math.IsNaN(result) == false {
 		return result
 	}
 	return 0
 }
 
-func (diff *CycloDiff) Max() int {
+func (diff *ComplexityDiff) CycloMax() int {
 	max := 0
-	for _, value := range diff.New {
+	for _, value := range diff.CycloNew {
 		if value > max {
 			max = value
 		}
@@ -43,11 +40,26 @@ func (diff *CycloDiff) Max() int {
 	return max
 }
 
-func CalcCycloDiff(dev *vcs.Developer) CycloDiff {
+func (diff *ComplexityDiff) FuncNodesSum() int {
+	sum := 0
+	for _, value := range diff.FuncNodes {
+		sum += value
+	}
+	return sum
+}
+
+func (diff *ComplexityDiff) FuncNodesAvg() float64 {
+	if result := float64(diff.FuncNodesSum()) / float64(len(diff.FuncNodes)); math.IsNaN(result) == false {
+		return result
+	}
+	return 0
+}
+
+func CalcComplexityDiff(dev *vcs.Developer) ComplexityDiff {
 
 	parser := NewParser()
 
-	cycloDiff := CycloDiff{0, 0, []int{}}
+	diff := ComplexityDiff{0, 0, []int{}, []int{}}
 
 	//handle added files
 	for _, file := range dev.AddedFiles() {
@@ -55,7 +67,8 @@ func CalcCycloDiff(dev *vcs.Developer) CycloDiff {
 
 		for _, function := range functions {
 			cyclo := CyclomaticComplexity(function.CFG)
-			cycloDiff.New = append(cycloDiff.New, cyclo)
+			diff.CycloNew = append(diff.CycloNew, cyclo)
+			diff.FuncNodes = append(diff.FuncNodes, function.NumNodes)
 		}
 	}
 
@@ -76,19 +89,20 @@ func CalcCycloDiff(dev *vcs.Developer) CycloDiff {
 					oldCyclo := CyclomaticComplexity(parentFunction.CFG)
 
 					if oldCyclo > newCyclo {
-						cycloDiff.Decreased++
+						diff.CycloDecreased++
 					} else if oldCyclo < newCyclo {
-						cycloDiff.Increased++
+						diff.CycloIncreased++
 					}
 
 				} else {
-					cycloDiff.New = append(cycloDiff.New, newCyclo)
+					diff.CycloNew = append(diff.CycloNew, newCyclo)
+					diff.FuncNodes = append(diff.FuncNodes, function.NumNodes)
 				}
 			}
 		}
 	}
 
-	return cycloDiff
+	return diff
 }
 
 /*

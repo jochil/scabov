@@ -66,33 +66,43 @@ func executeClassification(repo *vcs.Repository) {
 
 	for _, dev := range repo.Developers {
 
-		cycloDiff := analyzer.CalcCycloDiff(dev)
+		complexityDiff := analyzer.CalcComplexityDiff(dev)
+		languageUsage := analyzer.CalcLanguageUsage(dev)
 		fileDiff := dev.FileDiff()
 		lineDiff := dev.LineDiff()
 
 		//remove dev without any contribution
-		if cycloDiff.IsEmpty() && fileDiff.IsEmpty() && lineDiff.IsEmpty() {
-			continue
+
+		if complexityDiff.CycloAvg() != 0.0 ||
+			languageUsage.Value() != 0.0 ||
+			complexityDiff.FuncNodesAvg() != 0.0 {
+
+			styleRawMatrix[dev.Id] = map[string]float64{
+				"cyclo_avg":      complexityDiff.CycloAvg(),
+				"language_usage": languageUsage.Value(),
+				"function_size":  complexityDiff.FuncNodesAvg(),
+			}
 		}
 
-		styleRawMatrix[dev.Id] = map[string]float64{
-			"cyclo_avg": cycloDiff.Avg(),
-			"cyclo_max": float64(cycloDiff.Max()),
-		}
+		if fileDiff.IsEmpty() == false ||
+			lineDiff.IsEmpty() == false ||
+			complexityDiff.CycloIncreased > 0 ||
+			complexityDiff.CycloDecreased > 0 {
 
-		contributionRawMatrix[dev.Id] = map[string]float64{
-			"files_added":     float64(fileDiff.Added),
-			"files_removed":   float64(fileDiff.Removed),
-			"files_changed":   float64(fileDiff.Changed),
-			"lines_added":     float64(lineDiff.Added),
-			"lines_removed":   float64(lineDiff.Removed),
-			"cyclo_increased": float64(cycloDiff.Increased),
-			"cyclo_decreased": float64(cycloDiff.Decreased),
+			contributionRawMatrix[dev.Id] = map[string]float64{
+				"files_added":     float64(fileDiff.Added),
+				"files_removed":   float64(fileDiff.Removed),
+				"files_changed":   float64(fileDiff.Changed),
+				"lines_added":     float64(lineDiff.Added),
+				"lines_removed":   float64(lineDiff.Removed),
+				"cyclo_increased": float64(complexityDiff.CycloIncreased),
+				"cyclo_decreased": float64(complexityDiff.CycloDecreased),
+			}
 		}
 
 	}
 	log.Println("\t created raw data matrices")
-	//export.PrintMatrix(styleRawMatrix)
+	export.PrintMatrix(styleRawMatrix)
 	//export.PrintMatrix(contributionRawMatrix)
 
 	contributionMatrix := classifier.QCorrelationCoefficient(contributionRawMatrix)
@@ -103,8 +113,10 @@ func executeClassification(repo *vcs.Repository) {
 
 	contributionGroups := classifier.Merge(contributionMatrix)
 	styleGroups := classifier.Merge(styleMatrix)
-	log.Printf("\t finished classification, found %d style and %d contribution groups within %d active devs",
-		len(styleGroups), len(contributionGroups), len(contributionRawMatrix))
+	log.Printf("\t finished contribution classification, found %d groups within %d relevant devs",
+		len(contributionGroups), len(contributionRawMatrix))
+	log.Printf("\t finished style classification, found %d groups within %d relevant devs",
+		len(styleGroups), len(styleRawMatrix))
 
 	export.SaveClassificationResult("contribution", contributionGroups, contributionRawMatrix)
 	export.SaveClassificationResult("style", styleGroups, styleRawMatrix)

@@ -22,6 +22,7 @@ func (parameter *Parameter) String() string {
 type Function struct {
 	Name       string
 	Parameters []Parameter
+	NumNodes   int
 	CFG        *gs.Graph
 }
 

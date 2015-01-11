@@ -27,7 +27,7 @@ func CalcLanguageUsage(dev *vcs.Developer) LanguageUsage {
 type LanguageUsage interface {
 	NumUsedElements() uint
 	NumTotalElements() uint
-	Value() float32
+	Value() float64
 }
 
 type PHPLanguageUsage struct {
@@ -67,6 +67,6 @@ func (langUsage *PHPLanguageUsage) NumTotalElements() uint {
 	return uint(len(token.TokenList)) + php.NumInternalFunctions()
 }
 
-func (langUsage *PHPLanguageUsage) Value() float32 {
-	return float32(langUsage.NumUsedElements()) / float32(langUsage.NumTotalElements())
+func (langUsage *PHPLanguageUsage) Value() float64 {
+	return float64(langUsage.NumUsedElements()) * 100 / float64(langUsage.NumTotalElements())
 }

@@ -55,9 +55,9 @@ func (parser *PHPParser) Functions(file *vcs.File) map[string]Function {
 
 		case ast.Class, *ast.Class:
 			element := parser.readClass(node.(*ast.Class))
-		for _, function := range element.Methods {
-			functions[function.Name] = function
-		}
+			for _, function := range element.Methods {
+				functions[function.Name] = function
+			}
 
 		case *ast.FunctionStmt:
 			function := node.(*ast.FunctionStmt)
@@ -125,9 +125,23 @@ func (parser *PHPParser) readClass(class *ast.Class) Class {
 func (parser *PHPParser) readFunction(name string, body *ast.Block) Function {
 	element := Function{}
 	element.Name = name
+
+	if body != nil {
+		element.NumNodes = countNodes(body.Children())
+	}
 	element.CFG = parser.buildCFG(body)
 	//dumpCFG(name, element.CFG)
 	return element
+}
+
+func countNodes(nodes []ast.Node) int {
+	count := len(nodes)
+	for _, node := range nodes {
+		if node != nil {
+			count += countNodes(node.Children())
+		}
+	}
+	return count
 }
 
 // creating the control flow graph for a block struct from language specific parser
@@ -150,7 +164,6 @@ func (parser *PHPParser) readStatementIntoCfg(cfg *gs.Graph, statement ast.State
 	var endNodes []*gs.Vertex
 
 	switch t := statement.(type) {
-
 
 	case ast.Block:
 		endNodes = startNodes
@@ -329,7 +342,6 @@ func (parser *PHPParser) readTryCatchIntoCfg(cfg *gs.Graph, tryStmt *ast.TryStmt
 		catchEndNodes := parser.readBlockIntoCfg(cfg, catchStmt.CatchBlock, []*gs.Vertex{node})
 		allCatchEndNodes = append(allCatchEndNodes, catchEndNodes...)
 	}
-
 
 	endNodes = append(endNodes, tryEndNodes...)
 	endNodes = append(endNodes, allCatchEndNodes...)
