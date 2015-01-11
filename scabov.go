@@ -2,10 +2,10 @@ package main
 
 import (
 	"flag"
-	"github.com/jochil/analyzer"
-	"github.com/jochil/analyzer/classifier"
+	"github.com/jochil/scabov/analyzer"
+	"github.com/jochil/scabov/analyzer/classifier"
 	"github.com/jochil/scabov/export"
-	"github.com/jochil/vcs"
+	"github.com/jochil/scabov/vcs"
 	"io/ioutil"
 	"log"
 	"os"

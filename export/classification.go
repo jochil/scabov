@@ -2,7 +2,7 @@ package export
 
 import (
 	"encoding/xml"
-	"github.com/jochil/analyzer/classifier"
+	"github.com/jochil/scabov/analyzer/classifier"
 )
 
 type xmlDev struct {

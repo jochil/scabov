@@ -3,7 +3,7 @@ package analyzer
 import (
 	"fmt"
 	"github.com/gyuho/goraph/graph/gs"
-	"github.com/jochil/vcs"
+	"github.com/jochil/scabov/vcs"
 	"github.com/stephens2424/php"
 	"github.com/stephens2424/php/ast"
 	"github.com/stephens2424/php/lexer"

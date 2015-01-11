@@ -1,8 +1,8 @@
 package analyzer
 
 import (
-	"github.com/jochil/analyzer/php"
-	"github.com/jochil/vcs"
+	"github.com/jochil/scabov/analyzer/php"
+	"github.com/jochil/scabov/vcs"
 	"github.com/stephens2424/php/token"
 )
 

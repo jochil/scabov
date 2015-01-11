@@ -2,7 +2,7 @@ package analyzer
 
 import (
 	"github.com/gyuho/goraph/graph/gs"
-	"github.com/jochil/vcs"
+	"github.com/jochil/scabov/vcs"
 	"log"
 	"os/exec"
 	"math"
