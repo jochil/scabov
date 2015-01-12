@@ -55,6 +55,16 @@ func (diff *ComplexityDiff) FuncNodesAvg() float64 {
 	return 0
 }
 
+func (diff *ComplexityDiff) FuncNodesMax() int {
+	max := 0
+	for _, value := range diff.FuncNodes {
+		if value > max {
+			max = value
+		}
+	}
+	return max
+}
+
 func CalcComplexityDiff(dev *vcs.Developer) ComplexityDiff {
 
 	parser := NewParser()

@@ -94,7 +94,6 @@ func (parser *PHPParser) Elements(file *vcs.File) []Element {
 
 func (parser *PHPParser) parseFile(file *vcs.File) []ast.Node {
 	code := file.Content()
-
 	realParser := php.NewParser(code)
 	nodes, err := realParser.Parse()
 

@@ -64,6 +64,9 @@ func executeClassification(repo *vcs.Repository) {
 	contributionRawMatrix := map[string]map[string]float64{}
 	styleRawMatrix := map[string]map[string]float64{}
 
+	overallCycloMax := 0
+	overallFuncNodesMax := 0
+
 	for _, dev := range repo.Developers {
 
 		complexityDiff := analyzer.CalcComplexityDiff(dev)
@@ -71,11 +74,16 @@ func executeClassification(repo *vcs.Repository) {
 		fileDiff := dev.FileDiff()
 		lineDiff := dev.LineDiff()
 
-		//remove dev without any contribution
-
 		if complexityDiff.CycloAvg() != 0.0 ||
 			languageUsage.Value() != 0.0 ||
 			complexityDiff.FuncNodesAvg() != 0.0 {
+
+			if funcNodesMax := complexityDiff.FuncNodesMax(); funcNodesMax > overallFuncNodesMax{
+				overallFuncNodesMax = funcNodesMax
+			}
+			if cycloMax := complexityDiff.CycloMax(); cycloMax > overallCycloMax{
+				overallCycloMax = cycloMax
+			}
 
 			styleRawMatrix[dev.Id] = map[string]float64{
 				"cyclo_avg":      complexityDiff.CycloAvg(),
@@ -99,11 +107,22 @@ func executeClassification(repo *vcs.Repository) {
 				"cyclo_decreased": float64(complexityDiff.CycloDecreased),
 			}
 		}
-
 	}
 	log.Println("\t created raw data matrices")
 	export.PrintMatrix(styleRawMatrix)
 	//export.PrintMatrix(contributionRawMatrix)
+
+	//normalize matrices
+	log.Println(overallCycloMax, overallFuncNodesMax)
+
+	for _, row := range styleRawMatrix {
+		crtCyclo := row["cyclo_avg"]
+		row["cyclo_avg"] = crtCyclo * 100.0 / float64(overallCycloMax)
+
+		crtFuncSize := row["function_size"]
+		row["function_size"] = crtFuncSize * 100.0 / float64(overallFuncNodesMax)
+	}
+	export.PrintMatrix(styleRawMatrix)
 
 	contributionMatrix := classifier.QCorrelationCoefficient(contributionRawMatrix)
 	styleMatrix := classifier.QCorrelationCoefficient(styleRawMatrix)
