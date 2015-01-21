@@ -30,19 +30,3 @@ func (c *Commit) String() string {
 		len(c.RemovedFiles), len(c.ChangedFiles), len(c.AddedFiles), len(c.MovedFiles),
 	)
 }
-
-func (c *Commit) FileByPath(path string) *File {
-	if file, exists := c.Files[path]; exists {
-		return file
-	}
-	return nil
-}
-
-func (c *Commit) FileById(id string) *File {
-	for _, file := range c.Files {
-		if file.Id == id {
-			return file
-		}
-	}
-	return nil
-}
