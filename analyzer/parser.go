@@ -97,6 +97,8 @@ func (parser *PHPParser) parseFile(file *vcs.File) []ast.Node {
 	realParser := php.NewParser(code)
 	nodes, err := realParser.Parse()
 
+	//log.Println(file.StoragePath)
+
 	if err != nil {
 		//log.Fatal(err)
 		return []ast.Node{}
@@ -128,6 +130,8 @@ func (parser *PHPParser) readFunction(name string, body *ast.Block) Function {
 	if body != nil {
 		element.NumNodes = countNodes(body.Children())
 	}
+
+	//log.Println(element.Name)
 	element.CFG = parser.buildCFG(body)
 	//dumpCFG(name, element.CFG)
 	return element
@@ -170,10 +174,8 @@ func (parser *PHPParser) readStatementIntoCfg(cfg *gs.Graph, statement ast.State
 	case *ast.Block:
 		endNodes = parser.readBlockIntoCfg(cfg, statement.(*ast.Block), startNodes)
 
-	case ast.ExpressionStmt, ast.EchoStmt, ast.BreakStmt, *ast.BreakStmt:
-		endNodes = parser.readSimpleStmtIntoCfg(cfg, fmt.Sprintf("%T", statement), startNodes)
-
-	case ast.ReturnStmt, ast.ThrowStmt, *ast.ReturnStmt, *ast.EmptyStatement:
+	case ast.ExpressionStmt, ast.EchoStmt, ast.BreakStmt, *ast.BreakStmt, ast.ReturnStmt, ast.ThrowStmt, *ast.ReturnStmt,
+		*ast.EmptyStatement, *ast.ExitStmt, ast.AssignmentExpression, ast.BinaryExpression:
 		endNodes = parser.readSimpleStmtIntoCfg(cfg, fmt.Sprintf("%T", statement), startNodes)
 
 	case *ast.IfStmt:
@@ -187,13 +189,16 @@ func (parser *PHPParser) readStatementIntoCfg(cfg *gs.Graph, statement ast.State
 		endNodes = parser.readSwitchStmtIntoCfg(cfg, &switchStatement, startNodes)
 
 	case *ast.ForeachStmt:
-		endNodes = parser.readLoopIntoCfg(cfg, fmt.Sprintf("%T", statement), statement.(*ast.ForeachStmt).LoopBlock.(ast.Statement), startNodes)
+		endNodes = parser.readHeadLoopIntoCfg(cfg, fmt.Sprintf("%T", statement), statement.(*ast.ForeachStmt).LoopBlock.(ast.Statement), startNodes)
 
 	case *ast.ForStmt:
-		endNodes = parser.readLoopIntoCfg(cfg, fmt.Sprintf("%T", statement), statement.(*ast.ForStmt).LoopBlock.(ast.Statement), startNodes)
+		endNodes = parser.readHeadLoopIntoCfg(cfg, fmt.Sprintf("%T", statement), statement.(*ast.ForStmt).LoopBlock.(ast.Statement), startNodes)
 
 	case *ast.WhileStmt:
-		endNodes = parser.readLoopIntoCfg(cfg, fmt.Sprintf("%T", statement), statement.(*ast.WhileStmt).LoopBlock.(ast.Statement), startNodes)
+		endNodes = parser.readHeadLoopIntoCfg(cfg, fmt.Sprintf("%T", statement), statement.(*ast.WhileStmt).LoopBlock.(ast.Statement), startNodes)
+
+	case *ast.DoWhileStmt:
+		endNodes = parser.readFootLoopIntoCfg(cfg, fmt.Sprintf("%T", statement), statement.(*ast.DoWhileStmt).LoopBlock.(ast.Statement), startNodes)
 
 	case *ast.TryStmt:
 		endNodes = parser.readTryCatchIntoCfg(cfg, statement.(*ast.TryStmt), startNodes)
@@ -223,7 +228,33 @@ func (parser *PHPParser) readBlockIntoCfg(cfg *gs.Graph, block *ast.Block, start
 	return endNodes
 }
 
-func (parser *PHPParser) readLoopIntoCfg(cfg *gs.Graph, label string, statement ast.Statement, startNodes []*gs.Vertex) []*gs.Vertex {
+func (parser *PHPParser) readFootLoopIntoCfg(cfg *gs.Graph, label string, statement ast.Statement, startNodes []*gs.Vertex) []*gs.Vertex {
+
+	id := parser.createId(label, cfg)
+	headNode := cfg.CreateAndAddToGraph(id)
+
+	// connect end nodes
+	if len(startNodes) > 0 {
+		for _, parentNode := range startNodes {
+			cfg.Connect(parentNode, headNode, 1)
+		}
+	}
+
+	endNodes := parser.readStatementIntoCfg(cfg, statement, []*gs.Vertex{headNode})
+
+	footNode := cfg.CreateAndAddToGraph(id + "_end")
+	cfg.Connect(footNode, headNode, 1)
+
+	if len(endNodes) > 0 {
+		for _, endNode := range endNodes {
+			cfg.Connect(endNode, footNode, 1)
+		}
+	}
+
+	return []*gs.Vertex{headNode}
+}
+
+func (parser *PHPParser) readHeadLoopIntoCfg(cfg *gs.Graph, label string, statement ast.Statement, startNodes []*gs.Vertex) []*gs.Vertex {
 
 	id := parser.createId(label, cfg)
 	headNode := cfg.CreateAndAddToGraph(id)
