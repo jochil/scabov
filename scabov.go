@@ -12,6 +12,7 @@ import (
 )
 
 var (
+	//parameters
 	repoPath       = flag.String("p", "", "(remote) path to an vcs repository")
 	verbose        = flag.Bool("v", false, "activate verbose output")
 	language       = flag.String("l", "", "select programming language for analysis")
@@ -19,7 +20,10 @@ var (
 	classification = flag.Bool("c", false, "activate developer classification")
 	outputFilename = flag.String("o", "result.xml", "select output file")
 
-	outputFile *os.File
+	//local vars
+	repo                            *vcs.Repository
+	outputFile                      *os.File
+	styleGroups, contributionGroups []*classifier.Group
 )
 
 func main() {
@@ -44,10 +48,19 @@ func main() {
 		log.Fatal("repository path missing, e.g.: -p \"mypath/repo\"")
 	}
 
-	repo := vcs.NewRepository(*repoPath)
+	var err error
+	repo, err = vcs.NewRepository(*repoPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 
 	if *classification {
-		executeClassification(repo)
+		executeCompleteClassification()
+	}
+
+	if *metrics {
+		executeMetricsCalculation()
 	}
 
 	log.Printf("Saved results to %s", *outputFilename)
@@ -56,87 +69,35 @@ func main() {
 	log.Println("Finsihed")
 }
 
-func executeClassification(repo *vcs.Repository) {
+func executeMetricsCalculation() {
 
-	log.Println("start classification")
-
-	//create raw data matrix
-	contributionRawMatrix := map[string]map[string]float64{}
-	styleRawMatrix := map[string]map[string]float64{}
-
-	overallCycloMax := 0
-	overallFuncNodesMax := 0
-
-	for _, dev := range repo.Developers {
-
-		complexityDiff := analyzer.CalcComplexityDiff(dev)
-		languageUsage := analyzer.CalcLanguageUsage(dev)
-		fileDiff := dev.FileDiff()
-		lineDiff := dev.LineDiff()
-
-		if complexityDiff.CycloAvg() != 0.0 ||
-			languageUsage.Value() != 0.0 ||
-			complexityDiff.FuncNodesAvg() != 0.0 {
-
-			if funcNodesMax := complexityDiff.FuncNodesMax(); funcNodesMax > overallFuncNodesMax{
-				overallFuncNodesMax = funcNodesMax
-			}
-			if cycloMax := complexityDiff.CycloMax(); cycloMax > overallCycloMax{
-				overallCycloMax = cycloMax
-			}
-
-			styleRawMatrix[dev.Id] = map[string]float64{
-				"cyclo_avg":      complexityDiff.CycloAvg(),
-				"language_usage": languageUsage.Value(),
-				"function_size":  complexityDiff.FuncNodesAvg(),
-			}
-		}
-
-		if fileDiff.IsEmpty() == false ||
-			lineDiff.IsEmpty() == false ||
-			complexityDiff.CycloIncreased > 0 ||
-			complexityDiff.CycloDecreased > 0 {
-
-			contributionRawMatrix[dev.Id] = map[string]float64{
-				"files_added":     float64(fileDiff.Added),
-				"files_removed":   float64(fileDiff.Removed),
-				"files_changed":   float64(fileDiff.Changed),
-				"lines_added":     float64(lineDiff.Added),
-				"lines_removed":   float64(lineDiff.Removed),
-				"cyclo_increased": float64(complexityDiff.CycloIncreased),
-				"cyclo_decreased": float64(complexityDiff.CycloDecreased),
-			}
-		}
+	if styleGroups == nil {
+		executeStyleClassification()
 	}
-	log.Println("\t created raw data matrices")
-	export.PrintMatrix(styleRawMatrix)
-	//export.PrintMatrix(contributionRawMatrix)
-
-	//normalize matrices
-	log.Println(overallCycloMax, overallFuncNodesMax)
-
-	for _, row := range styleRawMatrix {
-		crtCyclo := row["cyclo_avg"]
-		row["cyclo_avg"] = crtCyclo * 100.0 / float64(overallCycloMax)
-
-		crtFuncSize := row["function_size"]
-		row["function_size"] = crtFuncSize * 100.0 / float64(overallFuncNodesMax)
+	if contributionGroups == nil {
+		executeContributionClassification()
 	}
-	export.PrintMatrix(styleRawMatrix)
 
-	contributionMatrix := classifier.QCorrelationCoefficient(contributionRawMatrix)
-	styleMatrix := classifier.QCorrelationCoefficient(styleRawMatrix)
+	log.Println("started metric extraction")
+}
 
-	log.Println("\t calculated distance matrices")
-	//export.PrintMatrix(styleMatrix)
+func executeCompleteClassification() {
+	executeStyleClassification()
+	executeContributionClassification()
+}
 
-	contributionGroups := classifier.Merge(contributionMatrix)
-	styleGroups := classifier.Merge(styleMatrix)
-	log.Printf("\t finished contribution classification, found %d groups within %d relevant devs",
-		len(contributionGroups), len(contributionRawMatrix))
-	log.Printf("\t finished style classification, found %d groups within %d relevant devs",
-		len(styleGroups), len(styleRawMatrix))
-
-	export.SaveClassificationResult("contribution", contributionGroups, contributionRawMatrix)
+func executeStyleClassification() {
+	log.Println("started style classification")
+	styleRawMatrix := analyzer.StyleData(repo)
+	styleGroups = classifier.ClusterAnalysis(styleRawMatrix)
 	export.SaveClassificationResult("style", styleGroups, styleRawMatrix)
+	log.Println("\t finished style classification")
+}
+
+func executeContributionClassification() {
+	log.Println("started contribution classification")
+	contributionRawMatrix := analyzer.ContributionData(repo)
+	contributionGroups = classifier.ClusterAnalysis(contributionRawMatrix)
+	export.SaveClassificationResult("contribution", contributionGroups, contributionRawMatrix)
+	log.Println("\t finished contribution classification")
 }

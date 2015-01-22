@@ -28,7 +28,7 @@ type Repository struct {
 /*
 initialize the repository (connector)
 */
-func NewRepository(path string) *Repository {
+func NewRepository(path string) (*Repository, error) {
 
 	//TODO evaluate vcs type
 	system := GIT
@@ -47,7 +47,8 @@ func NewRepository(path string) *Repository {
 
 	repo.Commits, repo.Developers = repo.connector.Load(repo.remote, repo.local)
 
-	return repo
+	//TODO add error handling
+	return repo, nil
 }
 
 //TODO replace this naive approach
