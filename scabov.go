@@ -54,7 +54,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-
 	if *classification {
 		executeCompleteClassification()
 	}
@@ -79,6 +78,14 @@ func executeMetricsCalculation() {
 	}
 
 	log.Println("started metric extraction")
+
+	styleHomogeneity := analyzer.CalcHomogeneity(styleGroups)
+	log.Printf("\t Style Homogeneity: %.2f", styleHomogeneity)
+
+	contributionHomogeneity := analyzer.CalcHomogeneity(contributionGroups)
+	log.Printf("\t Contribution Homogeneity: %.2f", contributionHomogeneity)
+
+	//TODO save results
 }
 
 func executeCompleteClassification() {
