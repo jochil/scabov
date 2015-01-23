@@ -21,8 +21,9 @@ type Repository struct {
 	Developers map[string]*Developer
 
 	connector Connector
-	remote    string
-	local     string
+
+	path      string
+	workspace string
 }
 
 /*
@@ -34,7 +35,7 @@ func NewRepository(path string) (*Repository, error) {
 	system := GIT
 
 	repo := &Repository{
-		remote: path,
+		path: path,
 	}
 
 	repo.checkWorkspace()
@@ -45,7 +46,7 @@ func NewRepository(path string) (*Repository, error) {
 		repo.connector = &GitConnector{}
 	}
 
-	repo.Commits, repo.Developers = repo.connector.Load(repo.remote, repo.local)
+	repo.Commits, repo.Developers = repo.connector.Load(repo.path, repo.workspace)
 
 	//TODO add error handling
 	return repo, nil
@@ -87,10 +88,10 @@ func (r *Repository) FindFileInCommit(fileId string, commitId string) *File {
 
 //TODO validate directories
 func (r *Repository) checkWorkspace() {
-	if r.local == "" {
+	if r.workspace == "" {
 		//get hash from repo url
 		h := sha1.New()
-		io.WriteString(h, r.remote)
+		io.WriteString(h, r.path)
 		dir := fmt.Sprintf("%x", h.Sum(nil))
 
 		//get current directory
@@ -99,6 +100,6 @@ func (r *Repository) checkWorkspace() {
 			log.Fatal(cwd)
 		}
 		//TODO ensure file/dir handling
-		r.local = filepath.Join(cwd, "workspace", dir)
+		r.workspace = filepath.Join(cwd, "workspace", dir)
 	}
 }

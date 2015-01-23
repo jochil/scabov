@@ -9,35 +9,34 @@ import (
 
 //common interface for all vcs connectors
 type Connector interface {
-	Load(remote string, local string) (map[string]*Commit, map[string]*Developer)
+	Load(path string, workspace string) (map[string]*Commit, map[string]*Developer)
 }
 
 //internal struct for this connecotr
 type GitConnector struct {
 	repo        *git.Repository
-	localPath   string
 	storagePath string
 	commits     map[string]*Commit
 	developers  map[string]*Developer
 	files       map[string]*File
 }
 
-//loads an existing repository or clone it from remote
-func (c *GitConnector) Load(remote string, local string) (map[string]*Commit, map[string]*Developer) {
+//loads an existing repository or clone it from external source
+func (c *GitConnector) Load(path string, workspace string) (map[string]*Commit, map[string]*Developer) {
 
-	repo, err := git.OpenRepository(local)
+	repo, err := git.OpenRepository(path)
 
 	if err != nil {
-		os.RemoveAll(local)
-		c.repo = c.cloneGitRepo(remote, local)
-		log.Printf("cloned git repo from %s to %s", remote, local)
+		os.RemoveAll(workspace)
+		c.repo = c.cloneGitRepo(path, workspace)
+		log.Printf("cloned git repo from %s to %s", path, workspace)
 	} else {
-		log.Printf("opened git repo in %s", local)
+		log.Printf("opened git repo in %s", path)
 		c.repo = repo
 	}
 
-	c.localPath = local
-	c.storagePath = path.Join(c.localPath, "file_storage")
+	c.storagePath = workspace
+
 	var fm os.FileMode = 0700
 	if err := os.MkdirAll(c.storagePath, fm); err != nil {
 		log.Fatalln("unable to create storage directory %s", c.storagePath)
@@ -246,10 +245,10 @@ func (c GitConnector) loadFile(oid *git.Oid) *File {
 	return file
 }
 
-func (c GitConnector) cloneGitRepo(remote string, local string) *git.Repository {
+func (c GitConnector) cloneGitRepo(external string, local string) *git.Repository {
 	checkoutOpts := &git.CheckoutOpts{Strategy: git.CheckoutForce}
 	cloneOpts := &git.CloneOptions{CheckoutOpts: checkoutOpts, Bare: true}
-	repo, err := git.Clone(remote, local, cloneOpts)
+	repo, err := git.Clone(external, local, cloneOpts)
 	if err != nil {
 		log.Fatal(err)
 	}
