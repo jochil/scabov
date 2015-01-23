@@ -1,6 +1,7 @@
 package vcs
 
 import (
+	"fmt"
 	git "github.com/libgit2/git2go"
 	"log"
 	"os"
@@ -9,7 +10,9 @@ import (
 
 //common interface for all vcs connectors
 type Connector interface {
-	Load(path string, workspace string) (map[string]*Commit, map[string]*Developer)
+	Load(path string, workspace string) error
+	Developers() map[string]*Developer
+	Commits() map[string]*Commit
 }
 
 //internal struct for this connecotr
@@ -22,24 +25,31 @@ type GitConnector struct {
 }
 
 //loads an existing repository or clone it from external source
-func (c *GitConnector) Load(path string, workspace string) (map[string]*Commit, map[string]*Developer) {
+func (c *GitConnector) Load(path string, workspace string) error {
 
-	repo, err := git.OpenRepository(path)
-
-	if err != nil {
-		os.RemoveAll(workspace)
-		c.repo = c.cloneGitRepo(path, workspace)
-		log.Printf("cloned git repo from %s to %s", path, workspace)
-	} else {
-		log.Printf("opened git repo in %s", path)
+	//local path?
+	if _, err := os.Stat(path); err == nil {
+		repo, err := git.OpenRepository(path)
+		if err != nil {
+			return err
+		}
 		c.repo = repo
+		log.Printf("opened local git repo in %s", path)
+	} else {
+		//try remote
+		os.RemoveAll(workspace)
+		c.repo, err = c.cloneGitRepo(path, workspace)
+		if err != nil {
+			return err
+		}
+		log.Printf("cloned remote git repo from %s to %s", path, workspace)
 	}
 
 	c.storagePath = workspace
 
 	var fm os.FileMode = 0700
 	if err := os.MkdirAll(c.storagePath, fm); err != nil {
-		log.Fatalln("unable to create storage directory %s", c.storagePath)
+		return fmt.Errorf("unable to create storage directory %s", c.storagePath)
 	}
 
 	c.developers = map[string]*Developer{}
@@ -51,7 +61,15 @@ func (c *GitConnector) Load(path string, workspace string) (map[string]*Commit, 
 	log.Printf("loaded %d commits, %d delevopers and %d different files from git repo",
 		len(c.commits), len(c.developers), len(c.files))
 
-	return c.commits, c.developers
+	return nil
+}
+
+func (c *GitConnector) Developers() map[string]*Developer {
+	return c.developers
+}
+
+func (c *GitConnector) Commits() map[string]*Commit {
+	return c.commits
 }
 
 //return all commits
@@ -245,12 +263,12 @@ func (c GitConnector) loadFile(oid *git.Oid) *File {
 	return file
 }
 
-func (c GitConnector) cloneGitRepo(external string, local string) *git.Repository {
+func (c GitConnector) cloneGitRepo(external string, local string) (*git.Repository, error) {
 	checkoutOpts := &git.CheckoutOpts{Strategy: git.CheckoutForce}
 	cloneOpts := &git.CloneOptions{CheckoutOpts: checkoutOpts, Bare: true}
 	repo, err := git.Clone(external, local, cloneOpts)
 	if err != nil {
-		log.Fatal(err)
+		return nil, fmt.Errorf("unable to get git repository: %s", err)
 	}
-	return repo
+	return repo, nil
 }

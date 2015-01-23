@@ -46,10 +46,16 @@ func NewRepository(path string) (*Repository, error) {
 		repo.connector = &GitConnector{}
 	}
 
-	repo.Commits, repo.Developers = repo.connector.Load(repo.path, repo.Workspace)
+	err := repo.connector.Load(repo.path, repo.Workspace)
+	if err != nil {
+		return nil, err
+	}
+
+	repo.Commits = repo.connector.Commits()
+	repo.Developers = repo.connector.Developers()
 
 	//TODO add error handling
-	return repo, nil
+	return repo, err
 }
 
 //TODO replace this naive approach
