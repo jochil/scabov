@@ -46,16 +46,19 @@ func NewRepository(path string) (*Repository, error) {
 		repo.connector = &GitConnector{}
 	}
 
-	err := repo.connector.Load(repo.path, repo.Workspace)
-	if err != nil {
+	//local or remote path?
+	if _, err := os.Stat(path); err == nil {
+		if err := repo.connector.LoadLocal(repo.path, repo.Workspace); err != nil {
+			return nil, err
+		}
+	} else if err := repo.connector.LoadRemote(repo.path, repo.Workspace); err != nil {
 		return nil, err
 	}
 
 	repo.Commits = repo.connector.Commits()
 	repo.Developers = repo.connector.Developers()
 
-	//TODO add error handling
-	return repo, err
+	return repo, nil
 }
 
 //TODO replace this naive approach

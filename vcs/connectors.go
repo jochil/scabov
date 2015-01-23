@@ -10,7 +10,8 @@ import (
 
 //common interface for all vcs connectors
 type Connector interface {
-	Load(path string, workspace string) error
+	LoadRemote(path string, workspace string) error
+	LoadLocal(path string, workspace string) error
 	Developers() map[string]*Developer
 	Commits() map[string]*Commit
 }
@@ -24,27 +25,43 @@ type GitConnector struct {
 	files       map[string]*File
 }
 
-//loads an existing repository or clone it from external source
-func (c *GitConnector) Load(path string, workspace string) error {
+func (c *GitConnector) LoadLocal(path string, workspace string) error {
 
-	//local path?
-	if _, err := os.Stat(path); err == nil {
-		repo, err := git.OpenRepository(path)
-		if err != nil {
-			return err
-		}
-		c.repo = repo
-		log.Printf("opened local git repo in %s", path)
-	} else {
-		//try remote
-		os.RemoveAll(workspace)
-		c.repo, err = c.cloneGitRepo(path, workspace)
-		if err != nil {
-			return err
-		}
-		log.Printf("cloned remote git repo from %s to %s", path, workspace)
+	repo, err := git.OpenRepository(path)
+	if err != nil {
+		return err
 	}
 
+	if err := c.init(repo, workspace); err != nil {
+		return err
+	}
+
+	log.Printf("opened local git repo in %s", path)
+	return nil
+}
+
+//loads an existing repository or clone it from external source
+func (c *GitConnector) LoadRemote(path string, workspace string) error {
+
+	//clear workspace
+	os.RemoveAll(workspace)
+	repo, err := c.cloneGitRepo(path, workspace)
+	if err != nil {
+		return err
+	}
+
+	if err := c.init(repo, workspace); err != nil {
+		return err
+	}
+
+	log.Printf("cloned remote git repo from %s to %s", path, workspace)
+
+	return nil
+}
+
+func (c *GitConnector) init(repo *git.Repository, workspace string) error {
+
+	c.repo = repo
 	c.storagePath = workspace
 
 	var fm os.FileMode = 0700
