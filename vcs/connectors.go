@@ -89,7 +89,6 @@ func (c *GitConnector) Commits() map[string]*Commit {
 	return c.commits
 }
 
-//return all commits
 func (c *GitConnector) fetchAll() {
 
 	if c.repo == nil {
@@ -126,31 +125,14 @@ recursively create objects for parent commits
 func (c GitConnector) createCommit(gitCommit *git.Commit) *Commit {
 
 	author := gitCommit.Author()
+
 	dev, exists := c.developers[author.Email]
 	if !exists {
-		dev = &Developer{
-			Id:      author.Email,
-			Email:   author.Email,
-			Name:    author.Name,
-			Commits: map[string]*Commit{},
-		}
+		dev = NewDeveloper(author.Email, author.Email, author.Name)
 		c.developers[author.Email] = dev
 	}
 
-	commit := &Commit{
-		Id:           gitCommit.Id().String(),
-		Developer:    dev,
-		Message:      gitCommit.Message(),
-		Date:         author.When,
-		Files:        map[string]*File{},
-		ChangedFiles: map[string]*File{},
-		RemovedFiles: map[string]*File{},
-		AddedFiles:   map[string]*File{},
-		MovedFiles:   map[string]*File{},
-		Parents:      map[string]*Commit{},
-		LineDiff:     LineDiff{0, 0},
-		Children:     map[string]*Commit{},
-	}
+	commit := NewCommit(gitCommit.Id().String(), gitCommit.Message(), author.When, dev)
 
 	c.commits[gitCommit.Id().String()] = commit
 	dev.Commits[gitCommit.Id().String()] = commit

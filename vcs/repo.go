@@ -20,8 +20,6 @@ type Repository struct {
 	Commits    map[string]*Commit
 	Developers map[string]*Developer
 
-	connector Connector
-
 	path      string
 	Workspace string
 }
@@ -40,23 +38,24 @@ func NewRepository(path string) (*Repository, error) {
 
 	repo.checkWorkspace()
 
-	//get correct connector for given system
+	//get correct connector for given vcs
+	var connector Connector
 	switch system {
 	case GIT:
-		repo.connector = &GitConnector{}
+		connector = &GitConnector{}
 	}
 
 	//local or remote path?
 	if _, err := os.Stat(path); err == nil {
-		if err := repo.connector.LoadLocal(repo.path, repo.Workspace); err != nil {
+		if err := connector.LoadLocal(path, repo.Workspace); err != nil {
 			return nil, err
 		}
-	} else if err := repo.connector.LoadRemote(repo.path, repo.Workspace); err != nil {
+	} else if err := connector.LoadRemote(path, repo.Workspace); err != nil {
 		return nil, err
 	}
 
-	repo.Commits = repo.connector.Commits()
-	repo.Developers = repo.connector.Developers()
+	repo.Commits = connector.Commits()
+	repo.Developers = connector.Developers()
 
 	return repo, nil
 }

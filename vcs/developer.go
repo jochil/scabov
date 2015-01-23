@@ -12,6 +12,15 @@ type Developer struct {
 	Commits map[string]*Commit
 }
 
+func NewDeveloper(id string, email string, name string) *Developer {
+	return &Developer{
+		Id:      id,
+		Email:   email,
+		Name:    name,
+		Commits: map[string]*Commit{},
+	}
+}
+
 func (dev *Developer) FirstCommit() *Commit {
 	var firstCommit *Commit
 	for _, commit := range dev.Commits {
