@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path"
 )
 
 var (
@@ -18,7 +19,7 @@ var (
 	language       = flag.String("l", "", "select programming language for analysis")
 	metrics        = flag.Bool("m", false, "activate metrics calculation")
 	classification = flag.Bool("c", false, "activate developer classification")
-	outputFilename = flag.String("o", "result.xml", "select output file")
+	outputFilename = flag.String("o", "", "select output file")
 
 	//local vars
 	repo                            *vcs.Repository
@@ -40,9 +41,6 @@ func main() {
 	vcs.Filter = filter
 	analyzer.Filter = filter
 
-	//TODO path validation?
-	outputFile, _ = os.Create(*outputFilename)
-
 	// load repo
 	if *repoPath == "" {
 		log.Fatal("repository path missing, e.g.: -p \"mypath/repo\"")
@@ -54,6 +52,13 @@ func main() {
 		log.Fatal(err)
 	}
 
+	//TODO path validation?
+	if *outputFilename == "" {
+		outputFile, _ = os.Create(path.Join(repo.Workspace, "result.xml"))
+	} else {
+		outputFile, _ = os.Create(*outputFilename)
+	}
+
 	if *classification {
 		executeCompleteClassification()
 	}
@@ -62,7 +67,7 @@ func main() {
 		executeMetricsCalculation()
 	}
 
-	log.Printf("Saved results to %s", *outputFilename)
+	log.Printf("Saved results to %s", outputFile.Name())
 	export.SaveFile(outputFile)
 
 	log.Println("Finsihed")

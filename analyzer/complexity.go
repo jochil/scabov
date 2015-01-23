@@ -3,9 +3,7 @@ package analyzer
 import (
 	"github.com/gyuho/goraph/graph/gs"
 	"github.com/jochil/scabov/vcs"
-	"log"
 	"math"
-	"os/exec"
 )
 
 type ComplexityDiff struct {
@@ -127,14 +125,4 @@ func CyclomaticComplexity(cfg *gs.Graph) int {
 	n := cfg.GetVerticesSize()
 	p := 1
 	return e - n + p
-}
-
-func dumpCFG(name string, cfg *gs.Graph) {
-	path := "workspace/graphs/" + name
-	cfg.ToDOTFile(path + ".dot")
-	cmd := exec.Command("dot", "-Tpng", path+".dot", "-o", path+".png")
-	err := cmd.Run()
-	if err != nil {
-		log.Fatal(err)
-	}
 }

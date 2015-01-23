@@ -130,10 +130,6 @@ func (parser *PHPParser) readFunction(name string, body *ast.Block) Function {
 	if body != nil {
 		element.NumNodes = countNodes(body.Children())
 	}
-
-	//log.Println(element.Name)
-	element.CFG = parser.buildCFG(body)
-	//dumpCFG(name, element.CFG)
 	return element
 }
 

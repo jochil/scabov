@@ -5,6 +5,9 @@ import (
 	"io"
 	"log"
 	"os"
+	"github.com/jochil/scabov/analyzer"
+	"path"
+	"os/exec"
 )
 
 type xmlRoot struct {
@@ -23,5 +26,16 @@ func SaveFile(file *os.File) {
 	enc.Indent("  ", "    ")
 	if err := enc.Encode(root); err != nil {
 		log.Fatalf("Error while create classification xml output: %v\n", err)
+	}
+}
+
+func DumpCfg(function analyzer.Function, workspace string) {
+
+	fileBase := path.Join(workspace, function.Name)
+	function.CFG.ToDOTFile(fileBase + ".dot")
+	cmd := exec.Command("dot", "-Tpng", fileBase+".dot", "-o", fileBase+".png")
+	err := cmd.Run()
+	if err != nil {
+		log.Fatal(err)
 	}
 }

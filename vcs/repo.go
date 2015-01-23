@@ -23,7 +23,7 @@ type Repository struct {
 	connector Connector
 
 	path      string
-	workspace string
+	Workspace string
 }
 
 /*
@@ -46,7 +46,7 @@ func NewRepository(path string) (*Repository, error) {
 		repo.connector = &GitConnector{}
 	}
 
-	repo.Commits, repo.Developers = repo.connector.Load(repo.path, repo.workspace)
+	repo.Commits, repo.Developers = repo.connector.Load(repo.path, repo.Workspace)
 
 	//TODO add error handling
 	return repo, nil
@@ -88,7 +88,7 @@ func (r *Repository) FindFileInCommit(fileId string, commitId string) *File {
 
 //TODO validate directories
 func (r *Repository) checkWorkspace() {
-	if r.workspace == "" {
+	if r.Workspace == "" {
 		//get hash from repo url
 		h := sha1.New()
 		io.WriteString(h, r.path)
@@ -100,6 +100,6 @@ func (r *Repository) checkWorkspace() {
 			log.Fatal(cwd)
 		}
 		//TODO ensure file/dir handling
-		r.workspace = filepath.Join(cwd, "workspace", dir)
+		r.Workspace = filepath.Join(cwd, "workspace", dir)
 	}
 }
