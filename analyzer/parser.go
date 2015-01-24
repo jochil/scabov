@@ -187,8 +187,12 @@ func (parser *PHPParser) readStatementIntoCfg(cfg *gs.Graph, statement ast.State
 		endNodes = parser.readBlockIntoCfg(cfg, statement.(*ast.Block), startNodes)
 
 	case ast.ExpressionStmt, ast.EchoStmt, ast.BreakStmt, *ast.BreakStmt, ast.ReturnStmt, ast.ThrowStmt, *ast.ReturnStmt,
-		*ast.EmptyStatement, *ast.ExitStmt, ast.AssignmentExpression, ast.BinaryExpression:
+		*ast.EmptyStatement, *ast.ExitStmt, ast.AssignmentExpression, ast.BinaryExpression,
+		*ast.ClassExpression, *ast.StaticVariableDeclaration:
 		endNodes = parser.readSimpleStmtIntoCfg(cfg, fmt.Sprintf("%T", statement), startNodes)
+
+	case *ast.TernaryExpression:
+		endNodes = parser.readTernaryExprIntoCfg(cfg, statement.(*ast.TernaryExpression), startNodes)
 
 	case *ast.IfStmt:
 		endNodes = parser.readIfStmtIntoCfg(cfg, statement.(*ast.IfStmt), startNodes)
@@ -394,6 +398,31 @@ func (parser *PHPParser) readTryCatchIntoCfg(cfg *gs.Graph, tryStmt *ast.TryStmt
 	}
 
 	return endNodes
+}
+
+//reads a ternary expression to cgf
+func (parser *PHPParser) readTernaryExprIntoCfg(cfg *gs.Graph, ternaryExpr *ast.TernaryExpression, startNodes []*gs.Vertex) []*gs.Vertex {
+
+	startNode := cfg.CreateAndAddToGraph(parser.createId("ternary-start", cfg))
+
+	// connect end nodes
+	if len(startNodes) > 0 {
+		for _, parentNode := range startNodes {
+			cfg.Connect(parentNode, startNode, 1)
+		}
+	}
+
+	endNode := cfg.CreateAndAddToGraph(parser.createId("ternary-end", cfg))
+
+	ternaryTrue := cfg.CreateAndAddToGraph(parser.createId("ternary-true", cfg))
+	cfg.Connect(startNode, ternaryTrue, 1)
+	cfg.Connect(ternaryTrue, endNode, 1)
+
+	ternaryFalse := cfg.CreateAndAddToGraph(parser.createId("ternary-false", cfg))
+	cfg.Connect(startNode, ternaryFalse, 1)
+	cfg.Connect(ternaryFalse, endNode, 1)
+
+	return []*gs.Vertex{endNode}
 }
 
 //reads a if statement into given cfg struct
