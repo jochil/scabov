@@ -184,7 +184,7 @@ func testMojena(steps map[int]*mergeStep) int {
 		next := steps[k-1].normLevel
 		test := (next - vk) / sk
 
-		if math.IsNaN(test) == false && test > 2.75 {
+		if math.IsNaN(test) == false && test > 3.5 {
 			return k
 		}
 
