@@ -1,6 +1,9 @@
 package analyzer
 
-import "github.com/jochil/scabov/analyzer/classifier"
+import (
+	"github.com/jochil/scabov/analyzer/classifier"
+	"github.com/jochil/scabov/vcs"
+)
 
 func CalcHomogeneity(groups []*classifier.Group) float64 {
 
@@ -18,4 +21,20 @@ func CalcHomogeneity(groups []*classifier.Group) float64 {
 	}
 
 	return float64(countDevs-len(groups)) / float64(countDevs)
+}
+
+func CalcFunctionStability(repo *vcs.Repository) float64 {
+
+	count := 0.0
+	sum := 0.0
+	for _, fileHistory := range History {
+		for _, history := range fileHistory {
+			count++
+			sum += history.Stability()
+		}
+	}
+
+	stability := sum / count
+
+	return stability
 }

@@ -90,7 +90,9 @@ func executeMetricsCalculation() {
 	contributionHomogeneity := analyzer.CalcHomogeneity(contributionGroups)
 	log.Printf("\t contribution homogeneity: %.2f", contributionHomogeneity)
 
-	stability, _ := analyzer.CalcFunctionStability(repo)
+	analyzer.LoadHistory(repo)
+
+	stability := analyzer.CalcFunctionStability(repo)
 	log.Printf("\t overall function stability: %.2f", stability)
 
 	//TODO save results
