@@ -123,7 +123,6 @@ creates an internal commit object based on the git2go commit
 recursively create objects for parent commits
 */
 func (c GitConnector) createCommit(gitCommit *git.Commit) *Commit {
-
 	author := gitCommit.Author()
 
 	dev, exists := c.developers[author.Email]
@@ -216,7 +215,9 @@ func (c GitConnector) loadTreeDiffToCommit(commit *Commit, parentTree *git.Tree,
 				commit.AddedFiles[filepath] = file
 			case git.DeltaRenamed:
 				status = "Renamed"
-				commit.MovedFiles[filepath] = file
+				commit.MovedFiles[oldFilepath] = filepath
+				commit.Files[filepath] = file
+
 				if delta.Similarity != 100 {
 					status += "/Modified"
 					commit.ChangedFiles[filepath] = file

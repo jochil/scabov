@@ -16,7 +16,7 @@ type Commit struct {
 	RemovedFiles map[string]*File
 	ChangedFiles map[string]*File
 	AddedFiles   map[string]*File
-	MovedFiles   map[string]*File
+	MovedFiles   map[string]string
 
 	LineDiff LineDiff
 
@@ -34,7 +34,7 @@ func NewCommit(id string, message string, date time.Time, dev *Developer) *Commi
 		ChangedFiles: map[string]*File{},
 		RemovedFiles: map[string]*File{},
 		AddedFiles:   map[string]*File{},
-		MovedFiles:   map[string]*File{},
+		MovedFiles:   map[string]string{},
 		Parents:      map[string]*Commit{},
 		LineDiff:     LineDiff{0, 0},
 		Children:     map[string]*Commit{},

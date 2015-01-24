@@ -67,10 +67,10 @@ func main() {
 		executeMetricsCalculation()
 	}
 
-	log.Printf("Saved results to %s", outputFile.Name())
+	log.Printf("saved results to %s", outputFile.Name())
 	export.SaveFile(outputFile)
 
-	log.Println("Finsihed")
+	log.Println("finsihed")
 }
 
 func executeMetricsCalculation() {
@@ -85,10 +85,13 @@ func executeMetricsCalculation() {
 	log.Println("started metric extraction")
 
 	styleHomogeneity := analyzer.CalcHomogeneity(styleGroups)
-	log.Printf("\t Style Homogeneity: %.2f", styleHomogeneity)
+	log.Printf("\t style homogeneity: %.2f", styleHomogeneity)
 
 	contributionHomogeneity := analyzer.CalcHomogeneity(contributionGroups)
-	log.Printf("\t Contribution Homogeneity: %.2f", contributionHomogeneity)
+	log.Printf("\t contribution homogeneity: %.2f", contributionHomogeneity)
+
+	stability, _ := analyzer.CalcFunctionStability(repo)
+	log.Printf("\t overall function stability: %.2f", stability)
 
 	//TODO save results
 }

@@ -24,6 +24,7 @@ type Function struct {
 	Parameters []Parameter
 	NumNodes   int
 	CFG        *gs.Graph
+	Hash       string
 }
 
 func (function *Function) String() string {

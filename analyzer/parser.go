@@ -1,6 +1,7 @@
 package analyzer
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"github.com/gyuho/goraph/graph/gs"
 	"github.com/jochil/scabov/vcs"
@@ -8,6 +9,7 @@ import (
 	"github.com/stephens2424/php/ast"
 	"github.com/stephens2424/php/lexer"
 	"github.com/stephens2424/php/token"
+	"io"
 	"log"
 	"strings"
 )
@@ -97,10 +99,7 @@ func (parser *PHPParser) parseFile(file *vcs.File) []ast.Node {
 	realParser := php.NewParser(code)
 	nodes, err := realParser.Parse()
 
-	//log.Println(file.StoragePath)
-
 	if err != nil {
-		//log.Fatal(err)
 		return []ast.Node{}
 	}
 	return nodes
@@ -126,13 +125,15 @@ func (parser *PHPParser) readClass(class *ast.Class) Class {
 func (parser *PHPParser) readFunction(name string, body *ast.Block) Function {
 	element := Function{}
 	element.Name = name
+	element.CFG = parser.buildCFG(body)
 
 	if body != nil {
 		element.NumNodes = countNodes(body.Children())
+
+		hash := sha256.New()
+		io.WriteString(hash, serializeNodes(body.Children()))
+		element.Hash = fmt.Sprintf("%x", hash.Sum(nil))
 	}
-
-	element.CFG = parser.buildCFG(body)
-
 	return element
 }
 
@@ -144,6 +145,18 @@ func countNodes(nodes []ast.Node) int {
 		}
 	}
 	return count
+}
+
+func serializeNodes(nodes []ast.Node) string {
+	string := ""
+	for _, node := range nodes {
+		if node != nil {
+			string += node.String()
+			string += fmt.Sprintf("[%s]", serializeNodes(node.Children()))
+			string += "|"
+		}
+	}
+	return string
 }
 
 // creating the control flow graph for a block struct from language specific parser
