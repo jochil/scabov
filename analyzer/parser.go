@@ -188,7 +188,7 @@ func (parser *PHPParser) readStatementIntoCfg(cfg *gs.Graph, statement ast.State
 
 	case ast.ExpressionStmt, ast.EchoStmt, ast.BreakStmt, *ast.BreakStmt, ast.ReturnStmt, ast.ThrowStmt, *ast.ReturnStmt,
 		*ast.EmptyStatement, *ast.ExitStmt, ast.AssignmentExpression, ast.BinaryExpression,
-		*ast.ClassExpression, *ast.StaticVariableDeclaration:
+		*ast.ClassExpression, *ast.StaticVariableDeclaration, *ast.GlobalDeclaration:
 		endNodes = parser.readSimpleStmtIntoCfg(cfg, fmt.Sprintf("%T", statement), startNodes)
 
 	case *ast.TernaryExpression:

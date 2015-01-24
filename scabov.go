@@ -70,6 +70,8 @@ func main() {
 	log.Printf("saved results to %s", outputFile.Name())
 	export.SaveFile(outputFile)
 
+	//TODO clean up (delete workspace, ...)
+
 	log.Println("finsihed")
 }
 
