@@ -2,16 +2,18 @@ package export
 
 import (
 	"encoding/xml"
+	"github.com/jochil/scabov/analyzer"
 	"io"
 	"log"
 	"os"
-	"github.com/jochil/scabov/analyzer"
-	"path"
 	"os/exec"
+	"path"
 )
 
 type xmlRoot struct {
 	XMLName        xml.Name            `xml:"result"`
+	Metrics        xmlMetrics          `xml:"metrics"`
+	Files          []xmlFile           `xml:"files>file"`
 	Classification []xmlClassification `xml:"classifications>classification"`
 }
 
@@ -25,7 +27,7 @@ func SaveFile(file *os.File) {
 
 	enc.Indent("  ", "    ")
 	if err := enc.Encode(root); err != nil {
-		log.Fatalf("Error while create classification xml output: %v\n", err)
+		log.Fatalf("Error while creating xml output: %v\n", err)
 	}
 }
 

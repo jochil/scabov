@@ -73,7 +73,7 @@ func (history *FunctionHistory) Growth() (size float64, complexity float64) {
 
 func (history *FunctionHistory) Stability() float64 {
 	if history.lifetime == 0 {
-		return 0
+		return 0.0
 	}
 	return float64(history.lifetime-history.changes) / float64(history.lifetime)
 }

@@ -22,9 +22,10 @@ var (
 	outputFilename = flag.String("o", "", "select output file")
 
 	//local vars
-	repo                            *vcs.Repository
-	outputFile                      *os.File
-	styleGroups, contributionGroups []*classifier.Group
+	repo                                                  *vcs.Repository
+	outputFile                                            *os.File
+	styleGroups, contributionGroups                       []*classifier.Group
+	runStyleClassification, runContributionClassification bool
 )
 
 func main() {
@@ -59,6 +60,9 @@ func main() {
 		outputFile, _ = os.Create(*outputFilename)
 	}
 
+	runStyleClassification = true
+	runContributionClassification = true
+
 	if *classification {
 		executeCompleteClassification()
 	}
@@ -77,10 +81,10 @@ func main() {
 
 func executeMetricsCalculation() {
 
-	if styleGroups == nil {
+	if runStyleClassification == true {
 		executeStyleClassification()
 	}
-	if contributionGroups == nil {
+	if runContributionClassification == true {
 		executeContributionClassification()
 	}
 
@@ -97,7 +101,8 @@ func executeMetricsCalculation() {
 	stability := analyzer.CalcFunctionStability(repo)
 	log.Printf("\t overall function stability: %.2f", stability)
 
-	//TODO save results
+	export.SaveMetricsResult(stability, styleHomogeneity, contributionHomogeneity)
+	export.SaveFunctions(analyzer.History)
 }
 
 func executeCompleteClassification() {
@@ -111,6 +116,7 @@ func executeStyleClassification() {
 	styleGroups = classifier.ClusterAnalysis(styleRawMatrix)
 	export.SaveClassificationResult("style", styleGroups, styleRawMatrix)
 	log.Println("\t finished style classification")
+	runStyleClassification = false
 }
 
 func executeContributionClassification() {
@@ -119,4 +125,5 @@ func executeContributionClassification() {
 	contributionGroups = classifier.ClusterAnalysis(contributionRawMatrix)
 	export.SaveClassificationResult("contribution", contributionGroups, contributionRawMatrix)
 	log.Println("\t finished contribution classification")
+	runContributionClassification = false
 }

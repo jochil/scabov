@@ -2,21 +2,14 @@ package export
 
 import (
 	"encoding/xml"
+	"fmt"
 	"github.com/jochil/scabov/analyzer/classifier"
 )
 
 type xmlDev struct {
-	XMLName        xml.Name `xml:"developer"`
-	Id             string   `xml:"id,attr"`
-	LinesAdded     int      `xml:"lines>added"`
-	LinesRemoved   int      `xml:"lines>removed"`
-	FilesAdded     int      `xml:"files>added"`
-	FilesRemoved   int      `xml:"files>removed"`
-	FilesChanged   int      `xml:"files>changed"`
-	CycloIncreased int      `xml:"cyclo>increased"`
-	CycloDecreased int      `xml:"cyclo>decreased"`
-	CycloAvg       int      `xml:"cyclo>avg"`
-	CycloMax       int      `xml:"cyclo>max"`
+	XMLName xml.Name `xml:"developer"`
+	Id      string   `xml:"id,attr"`
+	Data    []byte   `xml:",innerxml"`
 }
 
 type xmlGroup struct {
@@ -40,18 +33,27 @@ func SaveClassificationResult(id string, groups []*classifier.Group, rawMatrix m
 
 		for _, id := range group.Objects {
 			devData := rawMatrix[id]
-			dev := xmlDev{
-				Id:             id,
-				LinesAdded:     int(devData["lines_added"]),
-				LinesRemoved:   int(devData["lines_removes"]),
-				FilesAdded:     int(devData["files_added"]),
-				FilesRemoved:   int(devData["files_removed"]),
-				FilesChanged:   int(devData["files_changed"]),
-				CycloIncreased: int(devData["cyclo_increased"]),
-				CycloDecreased: int(devData["cyclo_decreased"]),
-				CycloAvg:       int(devData["cyclo_avg"]),
-				CycloMax:       int(devData["cyclo_max"]),
+			dev := xmlDev{Id: id}
+
+			if xmlClassification.Id == "style" {
+				data := fmt.Sprintf("<cyclo><avg>%.4f</avg></cyclo><language><usage>%.4f</usage></language><function><size>%.4f</size></function>",
+					devData["cyclo_avg"], devData["language_usage"], devData["function_size"])
+
+				dev.Data = []byte(data)
+
+			} else if xmlClassification.Id == "contribution" {
+
+				fileData := fmt.Sprintf("<files><added>%.0f</added><removed>%.0f</removed><changed>%.0f</changed></files>",
+					devData["files_added"], devData["files_removed"], devData["files_changed"])
+				lineData := fmt.Sprintf("<lines><added>%.0f</added><removed>%.0f</removed></lines>",
+					devData["lines_added"], devData["lines_removed"])
+				cycloData := fmt.Sprintf("<cyclo><increased>%.0f</increased><decreased>%.0f</decreased></cyclo>",
+					devData["cyclo_increased"], devData["cyclo_decreased"])
+
+				data := fileData + lineData + cycloData
+				dev.Data = []byte(data)
 			}
+
 			xmlGroup.Devs = append(xmlGroup.Devs, dev)
 		}
 		xmlClassification.Groups = append(xmlClassification.Groups, xmlGroup)
