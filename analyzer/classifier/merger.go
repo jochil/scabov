@@ -156,7 +156,6 @@ func Merge(matrix map[string]map[string]float64) []*Group {
 	//rescale levels to 1-7
 	for _, step := range steps {
 		step.normLevel = 1 + (step.level-minLevel)*(7-1)/(maxLevel-minLevel)
-		//log.Println(len(step.groups), step.level, step.normLevel)
 	}
 
 	clusterCount := testMojena(steps)
@@ -187,15 +186,6 @@ func testMojena(steps map[int]*mergeStep) int {
 		if math.IsNaN(test) == false && test > 3.5 {
 			return k
 		}
-
-		/*log.Println("step", len(steps)-k)
-		log.Println("cluster", k)
-		log.Println("durchschnitt", vk)
-		log.Println("standardabweichung", sk)
-		log.Println("vk+1", next)
-		log.Println("test", test)
-		log.Println("---------")*/
-
 	}
 
 	return 0

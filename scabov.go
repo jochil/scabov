@@ -76,7 +76,6 @@ func main() {
 
 	//TODO clean up (delete workspace, ...)
 
-	log.Println("finsihed")
 }
 
 func executeMetricsCalculation() {
@@ -115,7 +114,6 @@ func executeStyleClassification() {
 	styleRawMatrix := analyzer.StyleData(repo)
 	styleGroups = classifier.ClusterAnalysis(styleRawMatrix)
 	export.SaveClassificationResult("style", styleGroups, styleRawMatrix)
-	log.Println("\t finished style classification")
 	runStyleClassification = false
 }
 
@@ -124,6 +122,5 @@ func executeContributionClassification() {
 	contributionRawMatrix := analyzer.ContributionData(repo)
 	contributionGroups = classifier.ClusterAnalysis(contributionRawMatrix)
 	export.SaveClassificationResult("contribution", contributionGroups, contributionRawMatrix)
-	log.Println("\t finished contribution classification")
 	runContributionClassification = false
 }
