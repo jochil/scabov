@@ -55,7 +55,14 @@ func (parser *PHPParser) Functions(file *vcs.File) map[string]Function {
 	for _, node := range nodes {
 		switch node.(type) {
 
-		case ast.Class, *ast.Class:
+		case ast.Class:
+			class := node.(ast.Class)
+			element := parser.readClass(&class)
+			for _, function := range element.Methods {
+				functions[function.Name] = function
+			}
+
+		case *ast.Class:
 			element := parser.readClass(node.(*ast.Class))
 			for _, function := range element.Methods {
 				functions[function.Name] = function
@@ -80,7 +87,11 @@ func (parser *PHPParser) Elements(file *vcs.File) []Element {
 	for _, node := range nodes {
 		switch node.(type) {
 
-		case ast.Class, *ast.Class:
+		case ast.Class:
+			class := node.(ast.Class)
+			element := parser.readClass(&class)
+			elements = append(elements, &element)
+		case *ast.Class:
 			element := parser.readClass(node.(*ast.Class))
 			elements = append(elements, &element)
 
@@ -219,7 +230,7 @@ func (parser *PHPParser) readStatementIntoCfg(cfg *gs.Graph, statement ast.State
 	case *ast.TryStmt:
 		endNodes = parser.readTryCatchIntoCfg(cfg, statement.(*ast.TryStmt), startNodes)
 
-	case *ast.ContinueStmt:
+	case *ast.ContinueStmt, ast.ContinueStmt:
 		//TODO implement
 
 	default:
